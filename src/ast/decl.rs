@@ -1,43 +1,131 @@
 use super::r#type::Type;
-use super::stmt::CompoundStmt;
+use super::expr;
 
-// A declaration construct. Examples: void func(int, int);, int x; void add(int x, int y) {return x + y; }.
 pub enum Decl {
-    Func(FuncDecl),
-    Var(VarDecl),
+    Other(Other),
+    StaticAssert(StaticAssert),
 }
 
-// A function declaration is either a function definition or a prototype.
-pub enum FuncDecl {
-    Def(FuncDef),
-    Prototype(FuncPrototype),
+struct Other {
+    specifiers: Vec<DeclarationSpecifier>,
+    init_declarators: Vec<InitDeclarator>, 
 }
 
-// A function definition like void add(int x, int y) {return x + y; }.
-pub struct FuncDef {
-    pub func_name: String,
-    pub return_ty: Box<Type>,
-    pub params: FuncDefParams,
-    pub body: CompoundStmt,
+struct InitDeclarator {
+    declarator: Declarator,
+    initializer: Option<Initializer>,
 }
 
-type FuncDefParams = Vec<FuncDefParam>;
-
-pub struct FuncDefParam {
-    param_name: String,
-    ty: Type,
+pub enum DeclarationSpecifier {
+    StorageClassSpecifier(StorageClassSpecifier),
+    TypeSpecifier(TypeSpecifier),
+    TypeQualifier(TypeQualifier),
+    FunctionSpecifier(FunctionSpecifier),
+    AlignmentSpecifier(AtomicTypeSpecifier),
 }
 
-// A function prototype like void func(int x, int y);.
-pub struct FuncPrototype {
-    func_name: String,
-    return_ty: Type,
-    params: FuncDefParams,
+pub enum StorageClassSpecifier {
+    Typedef,
+    Extern,
+    Static,
+    ThreadLocal,
+    Auto,
+    Register,
 }
 
-#[derive(Clone, Eq, PartialEq)]
-// A variable declaration like int x;
-pub struct VarDecl {
-    var_name: String,
-    ty: Type,
+pub enum TypeSpecifier {
+    Void,
+    Char,
+    Short,
+    Int,
+    Long,
+    Float,
+    Double,
+    Signed,
+    Unsigned,
+    Bool,
+    Complex,
+    AtomicTypeSpecifier(AtomicTypeSpecifier),
+    StructOrUnionSpecifier(StructOrUnionSpecifier),
+    EnumSpecifier(),
+    TypedefName(),
 }
+
+pub struct AtomicTypeSpecifier {
+    typename: TypeName,
+}
+
+pub enum ObjKind  {
+    Struct,
+    Union,
+}
+
+struct StructOrUnionSpecifier {
+    kind: ObjKind,
+    indetifier: Option<String>,
+    decl_list: Vec<StructDeclaration>,
+}
+
+pub enum StructDeclaration {
+    Field(Filed),
+    StaticAssert(StaticAssert),
+}
+
+pub struct Filed {
+    qualifier: SpecifierQualifierList,
+    declarator: Vec<StructDeclarator>,
+} 
+
+pub enum StructDeclarator {
+    Declarator(Declarator),
+    Declarator2(Declarator2),
+}
+
+struct Declarator2 {
+    declarator: Option<Declarator>,
+    constant: Box<expr::Expr>,
+}
+
+struct Declarator {
+    
+}
+
+pub enum TypeQualifier {
+    Const,
+    Restrict,
+    Volatile,
+    Atomic,
+}
+
+pub enum FunctionSpecifier {
+    Inline,
+    Noreturn,
+}
+
+pub enum Initializer {
+    InitializerList(InitializerList),
+    AssignmentExpression,
+}
+
+pub struct InitializerList{
+    initializer: Vec<(Vec<Designator>, Initializer)>,
+}
+
+pub enum Designator {
+    Dot(String),
+    Index(Box<expr::Expr>),
+}
+
+pub struct StaticAssert {
+    predicate: Box<expr::Expr>,
+    message: String,
+}
+
+pub enum AbstractDeclarator {
+
+}
+
+pub enum DirectAbstractDeclarator {
+
+}
+

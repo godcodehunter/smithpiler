@@ -17,12 +17,12 @@ impl<'ast> InspectStore<'ast> {
     pub fn get_type_size(&self, r#type: &'ast ast::r#type::Type) -> u32 {
         unimplemented!()
     }
-    pub fn get_corresponding_type(&self, decl: ast::decl::VarDecl) -> &ast::r#type::Type {
+    pub fn get_corresponding_type(&self, decl: &ast::decl::VarDecl) -> &ast::r#type::Type {
         // self.corresponding_type[decl]
         unimplemented!()
     }
 
-    pub fn get_fundefpar_type(&self, decl: ast::decl::FuncDefParam) -> &ast::r#type::Type {
+    pub fn get_fundefpar_type(&self, decl: &ast::decl::FuncDefParam) -> &ast::r#type::Type {
         unimplemented!()
     }
     // Context sensitive expressions (break, continue)

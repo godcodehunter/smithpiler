@@ -1,10 +1,11 @@
-use super::expr::Expr;
+use super::{expr::Expr, decl};
 
 // A statement, like int x = 2;
 pub enum Statement {
     Compound(CompoundStmt),
     IfElse(IfElseStmt),
     If(IfStmt),
+    Goto(String),
     Return(ReturnStmt),
     Break,
     Continue,
@@ -12,16 +13,23 @@ pub enum Statement {
     DoWhile(DoWhileStmt),
     For(ForStmt),
     Switch(SwitchStmt),
-    Expression(Expr),
+    Expression(Option<Box<Expr>>),
+    Default(Default),
+    Case(Case),
+    Labeled(Labeled),
 }
 
+pub enum BlockItem {
+    Statement(Box<Statement>),
+    Declaration(Box<decl::Decl>),
+} 
 // A compound statement consist of a sequence of other statements. 
 // Example:
 // {
 // int x = 2;
 // f(x);
 // }
-pub struct CompoundStmt(pub Vec<Statement>);
+pub struct CompoundStmt(pub Vec<BlockItem>);
 
 // if (...) {...} else {...}.
 pub struct IfElseStmt {
@@ -38,12 +46,12 @@ pub struct IfStmt {
 
 // return 123;.
 pub struct ReturnStmt {
-    pub value: Box<Expr>,
+    pub value: Option<Box<Expr>>,
 }
 // while(...) {...}.
 pub struct WhileStmt {
     pub predicate: Box<Expr>,
-    pub stmt: Box<Statement>,
+    pub body: Box<Statement>,
 }
 
 pub struct DoWhileStmt {
@@ -51,14 +59,19 @@ pub struct DoWhileStmt {
     pub body: Box<Statement>,
 }
 
+pub enum ForInit {
+    Expression(Box<Expr>),
+    Declaration(Box<decl::Decl>),
+}
+
 pub struct ForStmt {
-    pub init: Box<Expr>,
-    pub predicate: Box<Expr>,
-    pub step: Box<Expr>,
+    pub init: Option<ForInit>,
+    pub predicate: Option<Box<Expr>>,
+    pub step: Option<Box<Expr>>,
     pub body: Box<Statement>,
 }
 
-pub struct Pattern {
+pub struct Case {
     pub constant: Box<Expr>,
     pub body: Box<Statement>,
 }
@@ -67,12 +80,12 @@ pub struct Default {
     pub body: Box<Statement>,
 }
 
-pub enum Case {
-    Default(Default),
-    Pattern(Pattern),
+pub struct SwitchStmt {
+    pub controlling: Box<Expr>,
+    pub body: Box<Statement>, 
 }
 
-pub struct SwitchStmt {
-    pub value: Box<Expr>,
-    pub cases: Vec<Case>, 
+pub struct Labeled {
+    pub label: String,
+    pub marked: Box<Statement>,
 }

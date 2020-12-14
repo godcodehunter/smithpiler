@@ -66,6 +66,7 @@ pub fn translate_type_cast<T: BaseTranslator>(translator: &T, value: llvm::prelu
             (Fundamental::Bool, _) => {
                 return llvm::core::LLVMBuildZExt;
             },
+            _ => unreachable!()
         }
     }
 
@@ -102,6 +103,7 @@ pub fn translate_type_cast<T: BaseTranslator>(translator: &T, value: llvm::prelu
             (Fundamental::Floating(_), Fundamental::UnsignedInteger(_)) => {
                 return llvm::core::LLVMBuildFPToUI;
             },
+            _ => unreachable!()
         }
     }
 
@@ -116,7 +118,9 @@ pub fn translate_type_cast<T: BaseTranslator>(translator: &T, value: llvm::prelu
         }
     };
 
-    conversion(translator.builder(), value, translator.translator_store().get_generated(target), NOP_STUB)
+    unsafe {
+        conversion(translator.builder(), value, translator.translator_store().get_generated(target), NOP_STUB)
+    }
 }
 
 //TODO: temporary placeholder 
@@ -349,7 +353,7 @@ impl<'ast> Translator<'ast> {
     fn create_function_entry(&self, decl: &ast::decl::FuncDef) {
         info!(target: "codegen", "create function entry");
 
-        let params = decl.params.into_iter().map(|param| {
+        let mut params = decl.params.iter().map(|param| {
             let param_type = self.inspect_store().get_fundefpar_type(param);
             self.translator_store().get_generated(param_type)
         }).collect::<Vec<_>>();
@@ -383,17 +387,17 @@ impl<'ast> Translator<'ast> {
 
     pub fn translate(&mut self, unit: TranslationUnit) -> llvm::prelude::LLVMModuleRef {
         for decl in unit.decls.0 {
-            match decl {
-                ast::decl::Decl::Func(fn_decl) => {
-                    match fn_decl {
-                        ast::decl::FuncDecl::Def(func) => {
-                            self.create_function_entry(&func);
-                        }
-                        ast::decl::FuncDecl::Prototype(_) => { todo!() }
-                    }
-                }
-                ast::decl::Decl::Var(_) => { todo!() }
-            }
+            // match decl {
+            //     ast::decl::Decl::Func(fn_decl) => {
+            //         match fn_decl {
+            //             ast::decl::FuncDecl::Def(func) => {
+            //                 self.create_function_entry(&func);
+            //             }
+            //             ast::decl::FuncDecl::Prototype(_) => { todo!() }
+            //         }
+            //     }
+            //     ast::decl::Decl::Var(_) => { todo!() }
+            // }
         }
         self.module
     }
@@ -443,11 +447,12 @@ impl<'a> StatementTranslator<'a> {
     }
 
     pub fn update_variable(&mut self, identifier: &String, value: llvm::prelude::LLVMValueRef) {
-        self.variables[identifier] = value;
+        // self.variables[identifier] = value;
+        unimplemented!()
     }
 
     // Generate 'if' brunch or 'if-else', if 'on_false_stmt' present   
-    fn generate_brunch(&self, predicate: &'a ast::expr::Expr, on_true_stmt: &'a ast::stmt::Statement, on_false_stmt: Option<&'a ast::stmt::Statement>) {
+    fn generate_brunch(&mut self, predicate: &'a ast::expr::Expr, on_true_stmt: &'a ast::stmt::Statement, on_false_stmt: Option<&'a ast::stmt::Statement>) {
         unsafe {
             let predicate = self.expr_trans.translate(predicate); 
             let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
@@ -473,7 +478,7 @@ impl<'a> StatementTranslator<'a> {
         }
     }
 
-    fn generate_while(&self, stmt: &'a ast::stmt::WhileStmt) {
+    fn generate_while(&mut self, stmt: &'a ast::stmt::WhileStmt) {
         unsafe {
             let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
             let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
@@ -485,12 +490,12 @@ impl<'a> StatementTranslator<'a> {
             llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
             
             llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-            self.translate(stmt.stmt.as_ref());
+            self.translate(stmt.body.as_ref());
             llvm::core::LLVMBuildBr(self.builder(), predicate_block);
         }
     }
 
-    fn generate_dowhile(&self, stmt: &'a ast::stmt::DoWhileStmt) {
+    fn generate_dowhile(&mut self, stmt: &'a ast::stmt::DoWhileStmt) {
         unsafe {
             let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
             let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
@@ -503,66 +508,67 @@ impl<'a> StatementTranslator<'a> {
         }
     }
 
-    fn generate_for(&self, stmt: &'a ast::stmt::ForStmt) {
+    fn generate_for(&mut self, stmt: &'a ast::stmt::ForStmt) {
         unsafe {
             let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
             let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
             let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
 
-            self.expr_trans.translate(stmt.init.as_ref());                
-            llvm::core::LLVMBuildBr(self.builder(), predicate_block);  
-            llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
-            let predicate = self.expr_trans.translate(stmt.predicate.as_ref());
-            llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
-            llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-            self.translate(stmt.body.as_ref());    
-            self.expr_trans.translate(stmt.step.as_ref());
+            // self.expr_trans.translate(stmt.init.as_ref());                
+            // llvm::core::LLVMBuildBr(self.builder(), predicate_block);  
+            // llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
+            // let predicate = self.expr_trans.translate(stmt.predicate.as_ref());
+            // llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
+            // llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
+            // self.translate(stmt.body.as_ref());    
+            // self.expr_trans.translate(stmt.step.as_ref());
         }
     }
 
     // TODO TODO TODO: неверно работает, так же добавить - default block, проваливание 
-    fn generate_switch(&self, stmt: &'a ast::stmt::SwitchStmt) {
-        unsafe {
-            let predicate = self.expr_trans.translate(stmt.value.as_ref());
-            let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-            let switch = llvm::core::LLVMBuildSwitch(self.builder(), predicate, after_block, stmt.cases.len().try_into().expect("internal error"));
+    fn generate_switch(&mut self, stmt: &'a ast::stmt::SwitchStmt) {
+        todo!()
+        // unsafe {
+        //     let predicate = self.expr_trans.translate(stmt.value.as_ref());
+        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        //     let switch = llvm::core::LLVMBuildSwitch(self.builder(), predicate, after_block, stmt.cases.len().try_into().expect("internal error"));
 
-            let mut prev: Option<llvm::prelude::LLVMBasicBlockRef>;
-            for case in stmt.cases {
-                let case_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-                llvm::core::LLVMPositionBuilderAtEnd(self.builder(), case_block);
+        //     let mut prev: Option<llvm::prelude::LLVMBasicBlockRef> = None;
+        //     for case in stmt.cases {
+        //         let case_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        //         llvm::core::LLVMPositionBuilderAtEnd(self.builder(), case_block);
 
-                match case {
-                    ast::stmt::Case::Default(default) => {
-                        self.translate(default.body.as_ref());
-                    }
-                    ast::stmt::Case::Pattern(pattern) => {
-                        let pattern_val = Translator::translate_constant(pattern.constant.as_ref());
-                        self.translate(pattern.body.as_ref());
-                        llvm::core::LLVMAddCase(switch, pattern_val, case_block);
-                    }
-                } 
+        //         match case {
+        //             ast::stmt::Case::Default(default) => {
+        //                 self.translate(default.body.as_ref());
+        //             }
+        //             ast::stmt::Case::Pattern(pattern) => {
+        //                 let pattern_val = Translator::translate_constant(pattern.constant.as_ref());
+        //                 self.translate(pattern.body.as_ref());
+        //                 llvm::core::LLVMAddCase(switch, pattern_val, case_block);
+        //             }
+        //         } 
 
-                if prev.is_some() {
-                    llvm::core::LLVMPositionBuilderAtEnd(self.builder(), prev.unwrap());
-                    llvm::core::LLVMBuildBr(self.builder(), case_block);
-                }
+        //         if prev.is_some() {
+        //             llvm::core::LLVMPositionBuilderAtEnd(self.builder(), prev.unwrap());
+        //             llvm::core::LLVMBuildBr(self.builder(), case_block);
+        //         }
                 
                 
-                prev = Some(case_block);
-            }
-            if prev.is_some() {
-                llvm::core::LLVMBuildBr(self.builder(), after_block);
-            }
-        }
+        //         prev = Some(case_block);
+        //     }
+        //     if prev.is_some() {
+        //         llvm::core::LLVMBuildBr(self.builder(), after_block);
+        //     }
+        // }
     }
 
     // TODO: comment - Tail block 
-    fn translate(&self, stmt: &'a ast::stmt::Statement) {
+    fn translate(&mut self, stmt: &'a ast::stmt::Statement) {
         unsafe {
             match stmt {
                 ast::stmt::Statement::Compound(stmt) => {
-                    stmt.0.into_iter().map(|expr| self.translate(&expr));
+                    stmt.0.iter().map(|expr| self.translate(&expr));
                 }
                 ast::stmt::Statement::IfElse(stmt) => {
                     self.generate_brunch(stmt.predicate.as_ref(), stmt.first_stmt.as_ref(), Some(stmt.second_stmt.as_ref()));
@@ -571,8 +577,8 @@ impl<'a> StatementTranslator<'a> {
                     self.generate_brunch(stmt.predicate.as_ref(), stmt.first_stmt.as_ref(), None);
                 }
                 ast::stmt::Statement::Return(stmt) => {
-                    let value = self.expr_trans.translate(stmt.value.as_ref());
-                    llvm::core::LLVMBuildRet(self.builder(), value);
+                    // let value = self.expr_trans.translate(stmt.value.as_ref());
+                    // llvm::core::LLVMBuildRet(self.builder(), value);
                 }
                 ast::stmt::Statement::While(stmt) => {
                     self.generate_while(stmt);
@@ -595,8 +601,10 @@ impl<'a> StatementTranslator<'a> {
                     todo!() 
                 }
                 ast::stmt::Statement::Expression(expr) => {
-                    self.expr_trans.translate(expr);
+                    // self.expr_trans.translate(expr);
+                    todo!()
                 }
+                ast::stmt::Statement::Goto(_) => {}
             }   
         }
     }

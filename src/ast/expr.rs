@@ -1,4 +1,4 @@
-use super::{r#type::Type, decl::VarDecl, decl::FuncDecl};
+use super::{r#type::Type};
 
 #[derive(Clone, Eq, PartialEq)]
 // Any expression in the C programming language.
@@ -8,8 +8,19 @@ pub enum Expr {
     TwoOperands(TwoOperandsExpr),
     Literal(Literal),
     Call(CallExpr),
-    Assign(AssignExpr),
     Cast(CastExr),
+    GenericSelection(GenericSelectionExpr),
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct GenericSelectionExpr {
+    expression: Box<Expr>,
+    association_list: Vec<GenericAssociation>,
+}
+
+//TODO: !!!! 
+pub struct GenericAssociation {
+    expression: Box<Expr>,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -27,16 +38,16 @@ pub enum Literal {
     Float(FloatLiteral),
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CharLiteralPrefix {
     L,
     LCU,
     UCU,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CharLiteral {
-    pub prefix: CharLiteralPrefix,
+    pub prefix: Option<CharLiteralPrefix>,
     pub value: u8,
 }
 
@@ -50,12 +61,12 @@ pub enum StringLiteralPrefix {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct StringLiteral {
-    pub prefix: StringLiteralPrefix,
+    pub prefix: Option<StringLiteralPrefix>,
     pub value: String,
 }
 
 #[derive(Clone, Eq, PartialEq)]
-enum IntegerSuffix {
+pub enum IntegerSuffix {
     U,
     L,
     UL,
@@ -98,13 +109,27 @@ pub struct OneOperandExpr {
 
 #[derive(Clone, Eq, PartialEq)]
 pub enum UnaryOp {
-    Neg,
+    //&x
+    Address,
+    //*x
+    Indirection,
+    //+x
+    Positive,
+    //-x
+    Negative,
+    //sizeof
     Sizeof,
+    //!
     LogicalNot,
+    //~
     BitwiseNot,
+    //++x
     Increment,
+    //x++
     Postincrement,
+    //--x
     Decrement,
+    //x--
     Postdecrement,
 }
 
@@ -119,19 +144,56 @@ pub struct TwoOperandsExpr {
 #[derive(Clone, Eq, PartialEq)]
 // A tag that determines a binary operator type.
 pub enum BinOp {
+    // = basic assignment
+    Assign,
+    // += addition assignment
+    AddAssign,
+    // -= subtraction assignment
+    SubAssign,
+    // *= multiplication assignment	
+    MulAssign,
+    // /= division assignment
+    DivAssign,
+    // %= modulo assignment
+    ModAssign,
+    // &= bitwise AND assignment
+    BwAndAssign,
+    // |= bitwise OR assignment	
+    BwOrAssign,
+    // ^= bitwise XOR assignment	
+    BwXorAssign,
+    // <<= bitwise left shift assignment
+    BwLShAssign,
+    // >>= bitwise right shift assignment
+    BwRShAssign,
+    // <
     Less,
+    // <=
     LessEqual,
+    // >
     Greater,
+    // >=
     GreaterEqual,
+    // ==
     Equal,
+    // !=
     NotEqual,
+    // +
     Plus,
+    // - 
     Minus,
+    // *
     Multiply,
+    // /
     Divide,
+    // 
     LogicalOr,
+    //
     LogicalAnd,
+    //
     MemberAccess,
+    //
+    Comma,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -141,40 +203,3 @@ pub struct CallExpr {
     pub callie: Box<Expr>,
 }
 
-#[derive(Clone, Eq, PartialEq)]
-// y = 2.
-pub struct AssignExpr {
-    pub declaration: Box<VarDecl>,
-    pub rhs: Box<Expr>,
-}
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[derive(Debug, Eq, PartialEq)]
-//     struct Node<'a>(&'a Expr, &'a [Node<'a>]);
-
-//     #[test]
-//     fn bfs_works() {
-//         let abc = Expr::Var(VarExpr {
-//             var_name: "abc".to_owned(),
-//         });
-//         let def = Expr::Var(VarExpr {
-//             var_name: "def".to_owned(),
-//         });
-//         let ghi = Expr::Var(VarExpr {
-//             var_name: "ghi".to_owned(),
-//         });
-        
-//         let tree = [Node(&def, &[]), Node(&ghi, &[])];
-
-//         let iter = Bft::new(&tree, |node| node.1.iter());
-//         let mut iter = iter.map(|(depth, node)| (depth, node.0));
-
-//         assert_eq!(iter.next(), Some((0, &abc)));
-//         assert_eq!(iter.next(), Some((1, &def)));
-//         assert_eq!(iter.next(), Some((1, &ghi)));
-//         assert_eq!(iter.next(), None);
-//     }
-// }

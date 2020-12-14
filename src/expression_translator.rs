@@ -41,7 +41,8 @@ impl<'a> ExpressionTranslator<'a> {
     }
 
     fn update_variable(&mut self, identifier: &String, value: llvm::prelude::LLVMValueRef) {
-        self.owner.update_variable(identifier, value);
+        // self.owner.update_variable(identifier, value);
+        todo!()
     }
 
     pub fn translate(&mut self, expr: &'a ast::expr::Expr) -> llvm::prelude::LLVMValueRef {
@@ -232,7 +233,7 @@ impl<'a> ExpressionTranslator<'a> {
     }
 
     // Creates a constant '1' of the same type as passed value 
-    fn create_one_of_same_type(ty: ast::r#type::Type) -> llvm::prelude::LLVMValueRef {
+    fn create_one_of_same_type(ty: &ast::r#type::Type) -> llvm::prelude::LLVMValueRef {
         todo!()
         // llvm::LLVMTypeKind::LLVMIntegerTypeKind => {
         //     llvm::core::LLVMConstInt(ty, 1, ty.is_signed() as _)
@@ -242,28 +243,28 @@ impl<'a> ExpressionTranslator<'a> {
         // },
     }
 
-    fn translate_increment(&self, value: llvm::prelude::LLVMValueRef, ty: ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
-        let one = Self::create_one_of_same_type(ty);
-        unsafe {
-            let val = llvm::core::LLVMBuildAdd(self.builder(), value, one, NOP_STUB);
-            (val, ty)
-        }
-    }
+    // fn translate_increment(&self, value: llvm::prelude::LLVMValueRef, ty: &ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, &ast::r#type::Type) {
+    //     let one = Self::create_one_of_same_type(ty);
+    //     unsafe {
+    //         let val = llvm::core::LLVMBuildAdd(self.builder(), value, one, NOP_STUB);
+    //         (val, ty)
+    //     }
+    // }
 
-    fn translate_decrement(&self, value: llvm::prelude::LLVMValueRef, ty: ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
-        let one = Self::create_one_of_same_type(ty);
-        unsafe {
-            let val = llvm::core::LLVMBuildSub(self.builder(), value, one, NOP_STUB);
-            (val, ty)
-        }
-    }
+    // fn translate_decrement(&self, value: llvm::prelude::LLVMValueRef, ty: &ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, &ast::r#type::Type) {
+    //     let one = Self::create_one_of_same_type(ty);
+    //     unsafe {
+    //         let val = llvm::core::LLVMBuildSub(self.builder(), value, one, NOP_STUB);
+    //         (val, ty)
+    //     }
+    // }
 
-    fn translate_bitwise_not(&self, value: llvm::prelude::LLVMValueRef, ty: ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
-        unsafe {
-            let val = llvm::core::LLVMBuildNot(self.builder(), value, NOP_STUB);
-            (val, ty)
-        }
-    }
+    // fn translate_bitwise_not(&self, value: llvm::prelude::LLVMValueRef, ty: ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, &ast::r#type::Type) {
+    //     unsafe {
+    //         let val = llvm::core::LLVMBuildNot(self.builder(), value, NOP_STUB);
+    //         (val, ty)
+    //     }
+    // }
 
     fn translate_negation(&self, value: llvm::prelude::LLVMValueRef, ty: ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
         unsafe {
@@ -373,130 +374,131 @@ impl<'a> ExpressionTranslator<'a> {
     }
 
     fn translate_expression_tree(&mut self, expr: &'a ast::expr::Expr) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
-        unsafe { 
-            match expr {
-                ast::expr::Expr::Cast(expr)=> {
-                    let val = self.translate_expression_tree(expr.expr.as_ref()); 
-                    let val = translate_type_cast(self, val.0, &val.1, expr.ty.as_ref());
-                    (val, expr.ty.as_ref().to_owned())
-                }
-                ast::expr::Expr::OneOperand(expr) => {
-                    use ast::r#type::*;
+        todo!()
+    //     unsafe { 
+    //         match expr {
+    //             ast::expr::Expr::Cast(expr)=> {
+    //                 let val = self.translate_expression_tree(expr.expr.as_ref()); 
+    //                 let val = translate_type_cast(self, val.0, &val.1, expr.ty.as_ref());
+    //                 (val, expr.ty.as_ref().to_owned())
+    //             }
+    //             ast::expr::Expr::OneOperand(expr) => {
+    //                 use ast::r#type::*;
 
-                    let value = self.translate_expression_tree(expr.value.as_ref());
-                    match expr.op {
-                        ast::expr::UnaryOp::Neg => { 
-                            self.translate_negation(value.0, value.1)
-                        }
-                        ast::expr::UnaryOp::BitwiseNot => {
-                            self.translate_bitwise_not(value.0, value.1)
-                        }
-                        ast::expr::UnaryOp::LogicalNot => {
-                            let target_ty = Type::Fundamental(Fundamental::Bool);
-                            let converted = translate_type_cast(self, value.0, &value.1, &target_ty);
-                            self.translate_logical_not(converted, target_ty)
-                        }
-                        ast::expr::UnaryOp::Increment => {
-                            self.translate_increment(value.0, value.1)
-                        }
-                        ast::expr::UnaryOp::Postincrement => {
-                            // self.post_translations.push(Box::new(|s: &mut Self| {
-                            //     let new_value = self.translate_increment(value.0, value.1);
-                            //     self.update_variable(expr.value.as_ref(), new_value.0);
-                            // }));
-                            //value
-                            todo!()
-                        }
-                        ast::expr::UnaryOp::Decrement => {
-                            self.translate_decrement(value.0, value.1)
-                        }
-                        ast::expr::UnaryOp::Postdecrement => {
-                            // self.post_translations.push(Box::new(|s: &mut Self| {
-                            //     let new_value = self.translate_decrement(value.0, value.1);
-                            //     self.update_variable(expr.value.as_ref(), new_value.0);
-                            // }));
-                            // value
-                            todo!()
-                        }
-                        ast::expr::UnaryOp::Sizeof => {
-                            // self.translate_sizeof()
-                            todo!()
-                        }
-                    }
-                }
-                ast::expr::Expr::TwoOperands(stmt) => {
-                    use ast::r#type::*;
+    //                 let value = self.translate_expression_tree(expr.value.as_ref());
+    //                 match expr.op {
+    //                     ast::expr::UnaryOp::Neg => { 
+    //                         self.translate_negation(value.0, value.1)
+    //                     }
+    //                     ast::expr::UnaryOp::BitwiseNot => {
+    //                         self.translate_bitwise_not(value.0, value.1)
+    //                     }
+    //                     ast::expr::UnaryOp::LogicalNot => {
+    //                         let target_ty = Type::Fundamental(Fundamental::Bool);
+    //                         let converted = translate_type_cast(self, value.0, &value.1, &target_ty);
+    //                         self.translate_logical_not(converted, target_ty)
+    //                     }
+    //                     ast::expr::UnaryOp::Increment => {
+    //                         self.translate_increment(value.0, value.1)
+    //                     }
+    //                     ast::expr::UnaryOp::Postincrement => {
+    //                         // self.post_translations.push(Box::new(|s: &mut Self| {
+    //                         //     let new_value = self.translate_increment(value.0, value.1);
+    //                         //     self.update_variable(expr.value.as_ref(), new_value.0);
+    //                         // }));
+    //                         //value
+    //                         todo!()
+    //                     }
+    //                     ast::expr::UnaryOp::Decrement => {
+    //                         self.translate_decrement(value.0, value.1)
+    //                     }
+    //                     ast::expr::UnaryOp::Postdecrement => {
+    //                         // self.post_translations.push(Box::new(|s: &mut Self| {
+    //                         //     let new_value = self.translate_decrement(value.0, value.1);
+    //                         //     self.update_variable(expr.value.as_ref(), new_value.0);
+    //                         // }));
+    //                         // value
+    //                         todo!()
+    //                     }
+    //                     ast::expr::UnaryOp::Sizeof => {
+    //                         // self.translate_sizeof()
+    //                         todo!()
+    //                     }
+    //                 }
+    //             }
+    //             ast::expr::Expr::TwoOperands(stmt) => {
+    //                 use ast::r#type::*;
 
-                    let lhs = self.translate_expression_tree(stmt.lhs.as_ref());
-                    let rhs = self.translate_expression_tree(stmt.rhs.as_ref());
-                    let ty = lhs.1;
+    //                 let lhs = self.translate_expression_tree(stmt.lhs.as_ref());
+    //                 let rhs = self.translate_expression_tree(stmt.rhs.as_ref());
+    //                 let ty = lhs.1;
 
-                    match stmt.op {
-                        ast::expr::BinOp::Less => { 
-                            self.translate_less(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::LessEqual => { 
-                            self.translate_less_or_equal(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::Greater => { 
-                            self.translate_greater(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::GreaterEqual => { 
-                            self.translate_greater_or_equal(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::Equal => { 
-                            self.translate_equal(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::NotEqual => { 
-                            self.translate_not_equal(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::Plus => { 
-                            self.translate_addition(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::Minus => { 
-                            self.translate_subtraction(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::Multiply => { 
-                           self.translate_division(lhs.0, rhs.0, ty)
-                        }
-                        ast::expr::BinOp::Divide => { 
-                            todo!()
-                        }
-                        ast::expr::BinOp::LogicalOr => { 
-                            let target_ty = Type::Fundamental(Fundamental::Bool);
-                            let lhs = translate_type_cast(self, lhs.0, &lhs.1, &target_ty);
-                            let rhs = translate_type_cast(self, rhs.0, &rhs.1, &target_ty);
+    //                 match stmt.op {
+    //                     ast::expr::BinOp::Less => { 
+    //                         self.translate_less(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::LessEqual => { 
+    //                         self.translate_less_or_equal(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::Greater => { 
+    //                         self.translate_greater(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::GreaterEqual => { 
+    //                         self.translate_greater_or_equal(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::Equal => { 
+    //                         self.translate_equal(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::NotEqual => { 
+    //                         self.translate_not_equal(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::Plus => { 
+    //                         self.translate_addition(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::Minus => { 
+    //                         self.translate_subtraction(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::Multiply => { 
+    //                        self.translate_division(lhs.0, rhs.0, ty)
+    //                     }
+    //                     ast::expr::BinOp::Divide => { 
+    //                         todo!()
+    //                     }
+    //                     ast::expr::BinOp::LogicalOr => { 
+    //                         let target_ty = Type::Fundamental(Fundamental::Bool);
+    //                         let lhs = translate_type_cast(self, lhs.0, &lhs.1, &target_ty);
+    //                         let rhs = translate_type_cast(self, rhs.0, &rhs.1, &target_ty);
 
-                            self.translate_logical_or(lhs, rhs, target_ty)
-                        }
-                        ast::expr::BinOp::LogicalAnd => { 
-                            let target_ty = Type::Fundamental(Fundamental::Bool);
-                            let lhs = translate_type_cast(self, lhs.0, &lhs.1, &target_ty);
-                            let rhs = translate_type_cast(self, rhs.0, &rhs.1, &target_ty);
+    //                         self.translate_logical_or(lhs, rhs, target_ty)
+    //                     }
+    //                     ast::expr::BinOp::LogicalAnd => { 
+    //                         let target_ty = Type::Fundamental(Fundamental::Bool);
+    //                         let lhs = translate_type_cast(self, lhs.0, &lhs.1, &target_ty);
+    //                         let rhs = translate_type_cast(self, rhs.0, &rhs.1, &target_ty);
 
-                            self.translate_logical_and(lhs, rhs, target_ty)
-                        }
-                        ast::expr::BinOp::MemberAccess => {
-                            todo!()
-                        }
-                    }
-                }
-                ast::expr::Expr::Literal(lit) => {
-                    self.translate_literal(lit)
-                }
-                ast::expr::Expr::Call(expr) => {
-                    let callie = self.translate_expression_tree(expr.callie.as_ref());
-                    let args = expr.args.into_iter().map(|expr| self.translate_expression_tree(&expr)).collect::<Vec<_>>();
-                    self.translate_call(callie.0)
-                }
-                ast::expr::Expr::Assign(assign) => {
-                    // self.update_variable(identifier, value);
-                    self.translate_assign()
-                }
-                ast::expr::Expr::Identifier(ident) => {
-                    self.resolve(ident)
-                }
-            }
-        }
+    //                         self.translate_logical_and(lhs, rhs, target_ty)
+    //                     }
+    //                     ast::expr::BinOp::MemberAccess => {
+    //                         todo!()
+    //                     }
+    //                 }
+    //             }
+    //             ast::expr::Expr::Literal(lit) => {
+    //                 self.translate_literal(lit)
+    //             }
+    //             ast::expr::Expr::Call(expr) => {
+    //                 let callie = self.translate_expression_tree(expr.callie.as_ref());
+    //                 let args = expr.args.into_iter().map(|expr| self.translate_expression_tree(&expr)).collect::<Vec<_>>();
+    //                 self.translate_call(callie.0)
+    //             }
+    //             ast::expr::Expr::Assign(assign) => {
+    //                 // self.update_variable(identifier, value);
+    //                 self.translate_assign()
+    //             }
+    //             ast::expr::Expr::Identifier(ident) => {
+    //                 self.resolve(ident)
+    //             }
+    //         }
+    //     }
     }
 }

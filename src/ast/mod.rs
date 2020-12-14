@@ -5,16 +5,16 @@ pub mod decl;
 pub mod span;
 pub mod position;
 
-use std::path::Path;
+pub struct Ast(pub Vec<ExternalDeclaration>);
 
-pub struct Ast(pub Vec<decl::Decl>);
-
-pub struct TranslationUnit {
-    pub decls: Ast,
-    //TODO: pub path: String,
+pub enum ExternalDeclaration {
+    FunctionDefinition(Box<FunctionDefinition>),
+    Declaration(Box<Declaration>),
 }
 
-pub struct CompilationBundle {
-
+pub struct FunctionDefinition {
+    specifiers: DeclarationSpecifiers,
+    declarator: Declarator,
+    declaration: Option<Vec<Declaration>>,
+    compound: CompoundStatement,
 }
-
