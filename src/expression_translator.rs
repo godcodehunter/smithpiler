@@ -6,7 +6,7 @@ use crate::ast;
 
 pub struct ExpressionTranslator<'a> {
     owner: &'a StatementTranslator<'a>,    
-    root: Option<&'a ast::expr::Expr>,
+    root: Option<&'a ast::expr::Expression>,
     // Used to delay translation for post increment/decrement operators.
     post_translations: Vec<Box<dyn Fn(&mut Self) -> ()>>,
 }
@@ -45,7 +45,7 @@ impl<'a> ExpressionTranslator<'a> {
         todo!()
     }
 
-    pub fn translate(&mut self, expr: &'a ast::expr::Expr) -> llvm::prelude::LLVMValueRef {
+    pub fn translate(&mut self, expr: &'a ast::expr::Expression) -> llvm::prelude::LLVMValueRef {
         self.root = Some(expr);
         let res = self.translate_expression_tree(self.root.unwrap());
         while !self.post_translations.is_empty() {
@@ -373,7 +373,7 @@ impl<'a> ExpressionTranslator<'a> {
         }
     }
 
-    fn translate_expression_tree(&mut self, expr: &'a ast::expr::Expr) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
+    fn translate_expression_tree(&mut self, expr: &'a ast::expr::Expression) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
         todo!()
     //     unsafe { 
     //         match expr {

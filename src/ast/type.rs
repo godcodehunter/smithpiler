@@ -1,4 +1,4 @@
-use super::expr::Expr;
+use super::expr::Expression;
 
 // Any type in the C programming language.
 #[derive(Clone, Eq, PartialEq)]
@@ -78,7 +78,7 @@ pub struct EnumeratedType {
 // A variant name with a constant integer expression.
 pub struct EnumeratedTypeVariant {
     id: String,
-    constant: Expr,
+    constant: Expression,
 }
 
 #[derive(Clone, Eq, PartialEq)]

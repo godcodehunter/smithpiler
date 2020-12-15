@@ -83,7 +83,7 @@ pub enum StructDeclarator {
 
 struct Declarator2 {
     declarator: Option<Declarator>,
-    constant: Box<expr::Expr>,
+    constant: Box<expr::Expression>,
 }
 
 struct Declarator {
@@ -113,16 +113,32 @@ pub struct InitializerList{
 
 pub enum Designator {
     Dot(String),
-    Index(Box<expr::Expr>),
+    Index(Box<expr::Expression>),
+}
+
+impl Designator {
+    pub fn new_dot(value: String) -> Self {
+        Dot{value}
+    }
+
+    pub fn new_index(value: Box<expr::Expression>) -> Self {
+        Index{value}
+    }
 }
 
 pub struct StaticAssert {
-    predicate: Box<expr::Expr>,
+    predicate: Box<expr::Expression>,
     message: String,
 }
 
-pub enum AbstractDeclarator {
+impl StaticAssert {
+    pub fn new(predicate: Box<expr::Expression>, message: String) -> Self  {
+        Self{predicate, message}
+    }
+}
 
+pub enum AbstractDeclarator {
+    
 }
 
 pub enum DirectAbstractDeclarator {

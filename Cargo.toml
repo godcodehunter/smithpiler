@@ -19,3 +19,6 @@ clap = "2.33.3"
 
 [build-dependencies]
 lalrpop = { version = "0.19.0", features = ["lexer"] }
+
+[profile.dev.build-override]
+opt-level = 3

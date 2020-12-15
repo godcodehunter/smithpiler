@@ -1,4 +1,4 @@
-use super::{expr::Expr, decl};
+use super::{expr::Expression, decl};
 
 // A statement, like int x = 2;
 pub enum Statement {
@@ -9,14 +9,52 @@ pub enum Statement {
     Return(ReturnStmt),
     Break,
     Continue,
-    While(WhileStmt),
+    While(Box<WhileStmt>),
     DoWhile(DoWhileStmt),
     For(ForStmt),
     Switch(SwitchStmt),
-    Expression(Option<Box<Expr>>),
+    Expression(Option<Box<Expression>>),
     Default(Default),
     Case(Case),
     Labeled(Labeled),
+}
+
+impl Statement {
+    pub fn new_continue() -> Statement {
+        Statement::Continue
+    }
+
+    pub fn new_return(expr: Expression) -> Statement {
+        Statement::Return(expr)
+    }
+
+    pub fn new_break() -> Statement {
+        Statement::Break
+    }
+
+    pub fn new_goto(label: String) -> Statement {
+        Statement::Goto(label)
+    }
+
+    pub fn new_while(predicate: Expression, body: Statement) -> Statement {
+        Statement::While(Box::new(WhileStmt{predicate, body}))
+    }
+
+    pub fn new_do_while(predicate: Expression, body: Statement) -> Statement {
+        Statement::DoWhile(Box::new(WhileStmt{predicate, body}))
+    }
+
+    pub fn new_for(init: Option<ForInit>, predicate: Option<Expression>, step: Option<Expression>, body: Statement) {
+        Statement::For(Box::new(ForStmt{init, predicate, step, body}))
+    }
+
+    pub fn new_switch(controlling: Expression, body: Statement) {
+        Statement::Switch(Box::new(SwitchStmt{controlling, body}))
+    }
+
+    pub fn new_expression() -> {
+        
+    }
 }
 
 pub enum BlockItem {
@@ -33,46 +71,46 @@ pub struct CompoundStmt(pub Vec<BlockItem>);
 
 // if (...) {...} else {...}.
 pub struct IfElseStmt {
-    pub predicate: Box<Expr>,
+    pub predicate: Box<Expression>,
     pub first_stmt: Box<Statement>,
     pub second_stmt: Box<Statement>,
 }
 
 // if(...) {...}.
 pub struct IfStmt {
-    pub predicate: Box<Expr>,
+    pub predicate: Box<Expression>,
     pub first_stmt: Box<Statement>,
 }
 
 // return 123;.
 pub struct ReturnStmt {
-    pub value: Option<Box<Expr>>,
+    pub value: Option<Box<Expression>>,
 }
 // while(...) {...}.
 pub struct WhileStmt {
-    pub predicate: Box<Expr>,
-    pub body: Box<Statement>,
+    pub predicate: Expression,
+    pub body: Statement,
 }
 
 pub struct DoWhileStmt {
-    pub predicate: Box<Expr>,
+    pub predicate: Box<Expression>,
     pub body: Box<Statement>,
 }
 
 pub enum ForInit {
-    Expression(Box<Expr>),
+    Expression(Expression),
     Declaration(Box<decl::Decl>),
 }
 
 pub struct ForStmt {
     pub init: Option<ForInit>,
-    pub predicate: Option<Box<Expr>>,
-    pub step: Option<Box<Expr>>,
-    pub body: Box<Statement>,
+    pub predicate: Option<Expression>,
+    pub step: Option<Expression>,
+    pub body: Statement,
 }
 
 pub struct Case {
-    pub constant: Box<Expr>,
+    pub constant: Box<Expression>,
     pub body: Box<Statement>,
 }
 
@@ -81,8 +119,8 @@ pub struct Default {
 }
 
 pub struct SwitchStmt {
-    pub controlling: Box<Expr>,
-    pub body: Box<Statement>, 
+    pub controlling: Expression,
+    pub body: Statement, 
 }
 
 pub struct Labeled {

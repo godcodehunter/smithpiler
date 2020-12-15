@@ -344,7 +344,7 @@ impl<'ast> Translator<'ast> {
         // build_query.last().unwrap().push(composite);
     }
     
-    fn translate_constant(stmt: &ast::expr::Expr) -> llvm::prelude::LLVMValueRef {
+    fn translate_constant(stmt: &ast::expr::Expression) -> llvm::prelude::LLVMValueRef {
         todo!()
     }
     
@@ -452,7 +452,7 @@ impl<'a> StatementTranslator<'a> {
     }
 
     // Generate 'if' brunch or 'if-else', if 'on_false_stmt' present   
-    fn generate_brunch(&mut self, predicate: &'a ast::expr::Expr, on_true_stmt: &'a ast::stmt::Statement, on_false_stmt: Option<&'a ast::stmt::Statement>) {
+    fn generate_brunch(&mut self, predicate: &'a ast::expr::Expression, on_true_stmt: &'a ast::stmt::Statement, on_false_stmt: Option<&'a ast::stmt::Statement>) {
         unsafe {
             let predicate = self.expr_trans.translate(predicate); 
             let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);

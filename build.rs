@@ -1,5 +1,8 @@
 extern crate lalrpop;
 
 fn main() {
-    lalrpop::Configuration::new().process_file("src/parser/parser.lalrpop").unwrap();
+    lalrpop::Configuration::new()
+        .emit_report(true)
+        .log_debug()
+        .process_file("src/parser/parser.lalrpop").unwrap();
 }
