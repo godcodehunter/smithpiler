@@ -53,6 +53,7 @@ extern {
         "_Static_assert" => lexer::Tok::StaticAssert, 
         "_Thread_local" => lexer::Tok::ThreadLocal,
 
+        TypedefName => lexer::Tok::TypedefName,
         Identifier => lexer::Tok::Identifier,
         Constant => lexer::Tok::Arrow,
         EnumerationConstant => lexer::Tok::Identifier,
@@ -113,23 +114,23 @@ extern {
 
 pub TranslationUnit: ast::Ast = <items: ExternalDeclaration*> => ast::Ast(items);
 
-pub ExternalDeclaration: ast::ExternalDeclaration = {
+ExternalDeclaration: ast::ExternalDeclaration = {
     FunctionDefinition => ast::FunctionDefinition(<>),
     Declaration,
 };
 
-pub FunctionDefinition: ast::FunctionDefinition = {
+FunctionDefinition: ast::FunctionDefinition = {
     <specifiers: DeclarationSpecifiers> <declarator: Declarator> <declaration: DeclarationList?> <compound: CompoundStatement>
         => ast::FunctionDefinition{specifiers, declarator, declaration, compound}
 };
 
-pub DeclarationList = Declaration+;
+DeclarationList = Declaration+;
 
 //////////////////////////////////////////////////
 /// Declarations /////////////////////////////////
 //////////////////////////////////////////////////
 
-pub Declaration: Box<decl::Decl> = {
+Declaration: Box<decl::Decl> = {
     <dspec: DeclarationSpecifiers> <idec: InitDeclaratorList?> ";" 
         => decl::Decl::Other(decl::Other{specifiers: dspec, init_declarators: idec}),
     <sa: StaticAssertDeclaration>
@@ -137,7 +138,7 @@ pub Declaration: Box<decl::Decl> = {
 };
 
 DeclarationSpecifier: decl::DeclarationSpecifier = {
-    <spec: StorageClassSpecifier> 
+    <spec: StorageClassSpecifier>  
         => decl::DeclarationSpecifier::StorageClassSpecifier(spec),
     <spec: TypeSpecifier>
         => decl::DeclarationSpecifier::TypeSpecifier(spec), 
@@ -306,8 +307,6 @@ DirectAbstractDeclarator: decl::DirectAbstractDeclarator = {
     DirectAbstractDeclarator? "(" ParameterTypeList? ")"
 };
 
-TypedefName: String = Identifier;
-
 Initializer: decl::Initializer = {
     <ae: AssignmentExpression> => decl::Initializer::AssignmentExpression
     "{" <il: InitializerList> ","? "}" => decl::Initializer::InitializerList(il),
@@ -337,7 +336,7 @@ StaticAssertDeclaration: Box<decl::Decl> =
 /// Expression ///////////////////////////////////
 //////////////////////////////////////////////////
 
-pub PrimaryExpression: Box<expr::Expression> = {
+PrimaryExpression: Box<expr::Expression> = {
     Identifier,
         => Box::new(expr::Expression::Identifier(ident)),
     Constant,
@@ -522,9 +521,8 @@ AssignmentOperator: expr::BinOp = {
     "|=" => expr::BinOp::BwOrAssign,
 };
 
-pub Expression: Box<expr::Expression> = {
-    AssignmentExpression,
-    Expression "," AssignmentExpression 
+Expression: Box<expr::Expression> = {
+    AssignmentExpression ("," AssignmentExpression)* 
         => expr::TwoOperandsExpr::new_assign(<>),
 };
 
@@ -534,7 +532,7 @@ ConstantExpression: Box<expr::Expression> = ConditionalExpression;
 /// Statements ///////////////////////////////////
 //////////////////////////////////////////////////
 
-pub Statement: Box<stmt::Statement> = {
+Statement: Box<stmt::Statement> = {
     LabeledStatement
     CompoundStatement,
     ExpressionStatement,
@@ -543,21 +541,21 @@ pub Statement: Box<stmt::Statement> = {
     JumpStatement,
 };
 
-pub CompoundStatement: Box<stmt::Statement> = {
+CompoundStatement: Box<stmt::Statement> = {
     "{" BlockItem* "}" 
         => expr::CompoundLiteral::new(<>),
 };  
 
-pub BlockItem: stmt::BlockItem = {
+BlockItem: stmt::BlockItem = {
     <d: Declaration> => stmt::BlockItem::Declaration(d),
     <s: Statement> => stmt::BlockItem::Statement(s),
 };
 
-pub ExpressionStatement: stmt::Statement = {
+ExpressionStatement: stmt::Statement = {
     Expression ";" => stmt::Statement::new_,
 };
 
-pub LabeledStatement: stmt::Statement = {
+LabeledStatement: stmt::Statement = {
     <label: Identifier> ":" <marked: Statement>
         => Box::new(stmt::Statement::Labeled(stmt::Labeled{label, marked})),
     "case" <constant: ConstantExpression> ":" <body: Statement> 
@@ -566,7 +564,7 @@ pub LabeledStatement: stmt::Statement = {
         => Box::new(stmt::Statement::Default(stmt::Default{body})),
 };
 
-pub SelectionStatement: stmt::Statement = {
+SelectionStatement: stmt::Statement = {
     "if" "(" <pred: Expression> ")" <on_success: Statement> <on_failure: ("else" Statement)?> 
         => {
             if on_failure.is_some() {
@@ -584,7 +582,7 @@ ForInitializerPart: stmt::ForInit = {
     Declaration => stmt::ForInit::Declaration(<>),
 };
 
-pub IterationStatement: stmt::Statement = {
+IterationStatement: stmt::Statement = {
     "while" "(" Expression ")" Statement 
         => stmt::Statement::new_while(<>),
     "do" Statement "while" "(" Expression ")" ";"
@@ -593,7 +591,7 @@ pub IterationStatement: stmt::Statement = {
         => stmt::Statement::new_for(<>),
 };
 
-pub JumpStatement: stmt::Statement = {
+JumpStatement: stmt::Statement = {
     "goto" Identifier ";" 
         => stmt::Statement::new_goto(<>),
     "continue" ";" 
