@@ -5,7 +5,7 @@ authors = ["Dmitry <mamhigtt@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-lalrpop-util = "0.19.0"
+lalrpop-util = { git = "https://github.com/lalrpop/lalrpop/" }
 regex = "1"
 uuid = { version = "0.7", features = ["serde", "v4"] }
 tungstenite = "0.11.0"
@@ -19,7 +19,7 @@ clap = "2.33.3"
 sana = "0.1.1"
 
 [build-dependencies]
-lalrpop = { version = "0.19.0", features = ["lexer"] }
+lalrpop = { git = "https://github.com/lalrpop/lalrpop/", features = ["lexer"] }
 
 [profile.dev.build-override]
 opt-level = 3

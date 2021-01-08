@@ -1,4 +1,4 @@
-use super::{r#type::Type};
+use super::{r#type::Type, decl};
 
 #[derive(Clone, Eq, PartialEq)]
 // Any expression in the C programming language.
@@ -13,7 +13,7 @@ pub enum Expression {
     CompoundLiteral(Box<CompoundLiteral>),
     Ternary(Box<Ternary>),
     Sizeof(Box<Sizeof>),
-    AlignOf(AlignOf)
+    AlignOf(AlignOf),
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -34,7 +34,7 @@ pub struct Sizeof {
 
 impl Sizeof {
     pub fn new() -> Expression {
-
+        Expression::Sizeof(Box::new(Self{}))
     }
 }
 
@@ -45,12 +45,13 @@ pub struct Ternary {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct CompoundLiteral {
+    typename: (),
     initializer: Box<decl::InitializerList>,
 }
 
 impl CompoundLiteral {
     pub fn new(initializer: Box<decl::InitializerList>) -> Expression {
-        Expression::CompoundLiteral(Box::new(Self{initializer}))
+        Expression::CompoundLiteral(Box::new(CompoundLiteral{typename: (), initializer}))
     }
 }
 
@@ -60,20 +61,20 @@ pub struct GenericSelectionExpr {
     association_list: Vec<GenericAssociation>,
 }
 
-//TODO: !!!! 
+#[derive(Clone, Eq, PartialEq)]
 pub struct GenericAssociation {
     expression: Expression,
 }
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct CastExr {
-    pub ty: Box<Type>,
+    pub ty: (),
     pub expr: Expression, 
 }
 
 impl CastExr {
-    pub fn new(ty: Box<Type>, expr: Expression) -> Expression {
-        Expression::Cast(Box::new(Self{ty, expr}))
+    pub fn new(ty: (), expr: Expression) -> Expression {
+        Expression::Cast(Box::new(Self{ty: (), expr}))
     }
 }
 
@@ -156,46 +157,46 @@ pub struct OneOperandExpr {
 }
 
 impl OneOperandExpr {
-    pub fn new_increment(value: Expression) -> Self {
-        Self{op: UnaryOp::Increment, value}
+    pub fn new_increment(value: Expression) -> Expression {
+        Expression::OneOperand(Box::new(Self{op: UnaryOp::Increment, value}))
     }
 
-    pub fn decrement(value: Expression) -> Self {
-        Self{op: UnaryOp::Decrement, value}
+    pub fn decrement(value: Expression) -> Expression {
+        Expression::OneOperand(Box::new(Self{op: UnaryOp::Decrement, value}))
     }
 
-    pub fn new_postincrement(value: Expression) -> Self {
-        Self{op: UnaryOp::Postincrement, value}
+    pub fn new_postincrement(value: Expression) -> Expression {
+        Expression::OneOperand(Box::new(Self{op: UnaryOp::Postincrement, value}))
     }
 
-    pub fn new_postdecrement(value: Expression) -> Self {
-        Self{op: UnaryOp::Postdecrement, value}
+    pub fn new_postdecrement(value: Expression) -> Expression {
+        Expression::OneOperand(Box::new(Self{op: UnaryOp::Postdecrement, value}))
     }
 }
 
 #[derive(Clone, Eq, PartialEq)]
 pub enum UnaryOp {
-    //&x
+    // &x
     Address,
-    //*x
+    // *x
     Indirection,
-    //+x
+    // +x
     Positive,
-    //-x
+    // -x
     Negative,
-    //sizeof
+    // sizeof
     Sizeof,
-    //!
+    // !
     LogicalNot,
-    //~
+    // ~
     BitwiseNot,
-    //++x
+    // ++x
     Increment,
-    //x++
+    // x++
     Postincrement,
-    //--x
+    // --x
     Decrement,
-    //x--
+    // x--
     Postdecrement,
 }
 
@@ -420,7 +421,7 @@ pub struct CallExpr {
 
 impl CallExpr {
     pub fn new(callie: Expression, args: Vec<Expression>) -> Expression {
-        Expression::Call(Self{callie, args})
+        Expression::Call(Box::new(Self{callie, args}))
     }
 }
 

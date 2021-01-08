@@ -1,16 +1,28 @@
 use sana::{Spanned, Sana};
 
 #[derive(Debug)]
-pub struct ParserError;
+pub struct ParserError(usize);
+
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("Unrecognizable token encountered: {}", self.0))
+    }
+}
 
 type ParserItem = Result<(usize, Token, usize), ParserError>;
 
-pub fn token_iter<'input>(input: &'input str) -> impl Iterator<Item=ParserItem> + 'input {
+pub fn token_iter<'input>(input: &'input str, dump_lexer: bool) -> impl Iterator<Item=ParserItem> + 'input {
     Token::lexer(input)
+        .map(move |tok| {
+            if dump_lexer {
+                println!("{}:{} {:?} {}", tok.start, tok.end, tok.value, &input[tok.start..tok.end]);
+            }
+            tok
+        })
         .filter(|tok| tok.value != Token::Whitespace)
         .map(|tok| match tok {
-            Spanned { value: Token::Error, .. } =>
-                Err(ParserError),
+            Spanned { value: Token::Error, start, ..} =>
+                Err(ParserError(start)),
             Spanned { value, start, end} =>
                 Ok((start, value, end)),
         })
@@ -116,7 +128,9 @@ pub enum Token {
     #[regex("\"\"")]
     StringLiteral,
 
-    // TypedefName,
+    #[regex("@@TODO")]
+    TypedefName,
+    
     #[token("[")]
     LBracket,
     #[token("]")]
@@ -215,6 +229,18 @@ pub enum Token {
 
     #[error]
     Error,
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        //     if tok.is_err() {
+        //         dbg!(tok.unwrap_err());
+        //         break;
+        //     }
+        //     let c = tok.unwrap();
+        // println!("{}:{} {:?} {}", tok.0, tok.2, tok.1, &input[tok.0..tok.2]);
+        todo!()
+    }
 }
 
 

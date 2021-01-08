@@ -1,19 +1,25 @@
 use super::r#type::Type;
 use super::expr;
 
-pub enum Decl {
+pub enum Declaration {
     Other(Other),
     StaticAssert(StaticAssert),
 }
 
-struct Other {
+pub struct Other {
     specifiers: Vec<DeclarationSpecifier>,
     init_declarators: Vec<InitDeclarator>, 
 }
 
-struct InitDeclarator {
+pub struct InitDeclarator {
     declarator: Declarator,
     initializer: Option<Initializer>,
+}
+
+impl InitDeclarator {
+    pub fn new(declarator: Declarator, initializer: Option<Initializer>) -> Self {
+        todo!()
+    }
 }
 
 pub enum DeclarationSpecifier {
@@ -47,12 +53,12 @@ pub enum TypeSpecifier {
     Complex,
     AtomicTypeSpecifier(AtomicTypeSpecifier),
     StructOrUnionSpecifier(StructOrUnionSpecifier),
-    EnumSpecifier(),
-    TypedefName(),
+    EnumSpecifier(EnumSpecifier),
+    TypedefName,
 }
 
 pub struct AtomicTypeSpecifier {
-    typename: TypeName,
+    typename: (),
 }
 
 pub enum ObjKind  {
@@ -60,10 +66,14 @@ pub enum ObjKind  {
     Union,
 }
 
-struct StructOrUnionSpecifier {
+pub struct StructOrUnionSpecifier {
     kind: ObjKind,
     indetifier: Option<String>,
     decl_list: Vec<StructDeclaration>,
+}
+
+pub enum SpecifierQualifierList {
+    
 }
 
 pub enum StructDeclaration {
@@ -81,13 +91,22 @@ pub enum StructDeclarator {
     Declarator2(Declarator2),
 }
 
-struct Declarator2 {
+pub struct Declarator2 {
     declarator: Option<Declarator>,
     constant: Box<expr::Expression>,
 }
 
-struct Declarator {
+pub struct Declarator {
     
+}
+
+pub struct EnumSpecifier {
+
+}
+
+pub struct Enumerator {
+    identifier: String,
+    expression: expr::Expression,
 }
 
 pub enum TypeQualifier {
@@ -102,38 +121,41 @@ pub enum FunctionSpecifier {
     Noreturn,
 }
 
+#[derive(Clone, Eq, PartialEq)]
 pub enum Initializer {
     InitializerList(InitializerList),
     AssignmentExpression,
 }
 
-pub struct InitializerList{
+#[derive(Clone, Eq, PartialEq)]
+pub struct InitializerList {
     initializer: Vec<(Vec<Designator>, Initializer)>,
 }
 
+#[derive(Clone, Eq, PartialEq)]
 pub enum Designator {
     Dot(String),
-    Index(Box<expr::Expression>),
+    Index(expr::Expression),
 }
 
 impl Designator {
     pub fn new_dot(value: String) -> Self {
-        Dot{value}
+        Designator::Dot(value)
     }
 
-    pub fn new_index(value: Box<expr::Expression>) -> Self {
-        Index{value}
+    pub fn new_index(value: expr::Expression) -> Self {
+        Designator::Index(value)
     }
 }
 
 pub struct StaticAssert {
-    predicate: Box<expr::Expression>,
+    predicate: expr::Expression,
     message: String,
 }
 
 impl StaticAssert {
-    pub fn new(predicate: Box<expr::Expression>, message: String) -> Self  {
-        Self{predicate, message}
+    pub fn new(predicate: expr::Expression, message: String) -> Declaration  {
+        Declaration::StaticAssert(Self{predicate, message})
     }
 }
 
@@ -145,3 +167,10 @@ pub enum DirectAbstractDeclarator {
 
 }
 
+pub struct ParameterTypeList {
+    
+}
+
+pub struct ParameterDeclaration {
+    
+}

@@ -3,20 +3,20 @@ use super::{expr::Expression, decl};
 // A statement, like int x = 2;
 pub enum Statement {
     Compound(CompoundStmt),
-    IfElse(IfElseStmt),
-    If(IfStmt),
+    IfElse(Box<IfElseStmt>),
+    If(Box<IfStmt>),
     Goto(String),
-    Return(ReturnStmt),
+    Return(Box<ReturnStmt>),
     Break,
     Continue,
     While(Box<WhileStmt>),
-    DoWhile(DoWhileStmt),
-    For(ForStmt),
-    Switch(SwitchStmt),
+    DoWhile(Box<DoWhileStmt>),
+    For(Box<ForStmt>),
+    Switch(Box<SwitchStmt>),
     Expression(Option<Box<Expression>>),
-    Default(Default),
-    Case(Case),
-    Labeled(Labeled),
+    Default(Box<Default>),
+    Case(Box<Case>),
+    Labeled(Box<Labeled>),
 }
 
 impl Statement {
@@ -24,8 +24,8 @@ impl Statement {
         Statement::Continue
     }
 
-    pub fn new_return(expr: Expression) -> Statement {
-        Statement::Return(expr)
+    pub fn new_return(expr: Option<Expression>) -> Statement {
+        Statement::Return(Box::new(ReturnStmt{value: expr}))
     }
 
     pub fn new_break() -> Statement {
@@ -41,25 +41,25 @@ impl Statement {
     }
 
     pub fn new_do_while(predicate: Expression, body: Statement) -> Statement {
-        Statement::DoWhile(Box::new(WhileStmt{predicate, body}))
+        Statement::DoWhile(Box::new(DoWhileStmt{predicate, body}))
     }
 
-    pub fn new_for(init: Option<ForInit>, predicate: Option<Expression>, step: Option<Expression>, body: Statement) {
+    pub fn new_for(init: Option<ForInit>, predicate: Option<Expression>, step: Option<Expression>, body: Statement) -> Statement {
         Statement::For(Box::new(ForStmt{init, predicate, step, body}))
     }
 
-    pub fn new_switch(controlling: Expression, body: Statement) {
+    pub fn new_switch(controlling: Expression, body: Statement) -> Statement {
         Statement::Switch(Box::new(SwitchStmt{controlling, body}))
     }
 
-    pub fn new_expression() -> {
-        
+    pub fn new_expr_stmt(expression: Expression) -> Statement {
+        todo!()
     }
 }
 
 pub enum BlockItem {
-    Statement(Box<Statement>),
-    Declaration(Box<decl::Decl>),
+    Statement(Statement),
+    Declaration(decl::Declaration),
 } 
 // A compound statement consist of a sequence of other statements. 
 // Example:
@@ -68,6 +68,12 @@ pub enum BlockItem {
 // f(x);
 // }
 pub struct CompoundStmt(pub Vec<BlockItem>);
+
+impl CompoundStmt {
+    pub fn new(items: Vec<BlockItem>) -> Statement {
+        Statement::Compound(CompoundStmt(items))
+    }
+}
 
 // if (...) {...} else {...}.
 pub struct IfElseStmt {
@@ -78,13 +84,19 @@ pub struct IfElseStmt {
 
 // if(...) {...}.
 pub struct IfStmt {
-    pub predicate: Box<Expression>,
-    pub first_stmt: Box<Statement>,
+    pub predicate: Expression,
+    pub first_stmt: Statement,
+}
+
+impl IfStmt {
+    pub fn new(predicate: Expression, first_stmt: Statement) -> Statement {
+        Statement::If(Box::new(IfStmt{predicate, first_stmt}))
+    }
 }
 
 // return 123;.
 pub struct ReturnStmt {
-    pub value: Option<Box<Expression>>,
+    pub value: Option<Expression>,
 }
 // while(...) {...}.
 pub struct WhileStmt {
@@ -93,13 +105,13 @@ pub struct WhileStmt {
 }
 
 pub struct DoWhileStmt {
-    pub predicate: Box<Expression>,
-    pub body: Box<Statement>,
+    pub predicate: Expression,
+    pub body: Statement,
 }
 
 pub enum ForInit {
     Expression(Expression),
-    Declaration(Box<decl::Decl>),
+    Declaration(Box<decl::Declaration>),
 }
 
 pub struct ForStmt {
@@ -110,12 +122,24 @@ pub struct ForStmt {
 }
 
 pub struct Case {
-    pub constant: Box<Expression>,
-    pub body: Box<Statement>,
+    pub constant: Expression,
+    pub body: Statement,
+}
+
+impl Case {
+    pub fn new(constant: Expression, body: Statement) -> Statement {
+        Statement::Case(Box::new(Case{constant, body}))
+    }
 }
 
 pub struct Default {
-    pub body: Box<Statement>,
+    pub body: Statement,
+}
+
+impl Default {
+    pub fn new(body: Statement) -> Statement {
+        Statement::Default(Box::new(Default{body}))
+    }
 }
 
 pub struct SwitchStmt {
@@ -125,5 +149,11 @@ pub struct SwitchStmt {
 
 pub struct Labeled {
     pub label: String,
-    pub marked: Box<Statement>,
+    pub stmt: Statement,
+}
+
+impl Labeled {
+    pub fn new(label: String, stmt: Statement) -> Statement {
+        Statement::Labeled(Box::new(Labeled{label, stmt}))
+    }
 }

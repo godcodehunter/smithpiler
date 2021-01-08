@@ -1,175 +1,190 @@
-use crate::lexer;
+use super::lexer;
 use crate::ast::{expr, stmt, decl, self};
 
-grammar;
+grammar<'input>(input: &'input str);
 
 extern {
     type Location = usize;
-    type Error = lexer::LexicalError;
+    type Error = lexer::ParserError;
 
-    enum lexer::Tok {
-        "auto" => lexer::Tok::Auto,
-        "break" => lexer::Tok::Break,
-        "case" => lexer::Tok::Case,
-        "char" => lexer::Tok::Char,
-        "const" => lexer::Tok::Const,
-        "continue" => lexer::Tok::Continue,
-        "default" => lexer::Tok::Default,
-        "do" => lexer::Tok::Do,
-        "double" => lexer::Tok::Double,
-        "else" => lexer::Tok::Else,
-        "enum" => lexer::Tok::Enum, 
-        "extern" => lexer::Tok::Extern, 
-        "float" => lexer::Tok::Float,  
-        "for" => lexer::Tok::For, 
-        "goto" => lexer::Tok::Goto, 
-        "if" => lexer::Tok::If,
-        "inline" => lexer::Tok::Inline, 
-        "int" => lexer::Tok::Int, 
-        "long" => lexer::Tok::Long, 
-        "register" => lexer::Tok::Register, 
-        "restrict" => lexer::Tok::Restrict, 
-        "return" => lexer::Tok::Return,
-        "short" => lexer::Tok::Short,  
-        "signed" => lexer::Tok::Signed, 
-        "sizeof" => lexer::Tok::Sizeof, 
-        "static" => lexer::Tok::Static, 
-        "struct" => lexer::Tok::Struct,
-        "switch" => lexer::Tok::Switch, 
-        "typedef" => lexer::Tok::Typedef, 
-        "union" => lexer::Tok::Union, 
-        "unsigned" => lexer::Tok::Unsigned, 
-        "void" => lexer::Tok::Void,
-        "volatile" => lexer::Tok::Volatile, 
-        "while" => lexer::Tok::While,  
-        "_Alignas" => lexer::Tok::Alignas,  
-        "_Alignof" => lexer::Tok::Alignof, 
-        "_Atomic" => lexer::Tok::Atomic,
-        "_Bool" => lexer::Tok::Bool, 
-        "_Complex" => lexer::Tok::Complex, 
-        "_Generic" => lexer::Tok::Generic, 
-        "_Imaginary" => lexer::Tok::Imaginary, 
-        "_Noreturn" => lexer::Tok::Noreturn, 
-        "_Static_assert" => lexer::Tok::StaticAssert, 
-        "_Thread_local" => lexer::Tok::ThreadLocal,
+    enum lexer::Token {
+        "auto" => lexer::Token::Auto,
+        "break" => lexer::Token::Break,
+        "case" => lexer::Token::Case,
+        "char" => lexer::Token::Char,
+        "const" => lexer::Token::Const,
+        "continue" => lexer::Token::Continue,
+        "default" => lexer::Token::Default,
+        "do" => lexer::Token::Do,
+        "double" => lexer::Token::Double,
+        "else" => lexer::Token::Else,
+        "enum" => lexer::Token::Enum, 
+        "extern" => lexer::Token::Extern, 
+        "float" => lexer::Token::Float,  
+        "for" => lexer::Token::For, 
+        "goto" => lexer::Token::Goto, 
+        "if" => lexer::Token::If,
+        "inline" => lexer::Token::Inline, 
+        "int" => lexer::Token::Int, 
+        "long" => lexer::Token::Long, 
+        "register" => lexer::Token::Register, 
+        "restrict" => lexer::Token::Restrict, 
+        "return" => lexer::Token::Return,
+        "short" => lexer::Token::Short,  
+        "signed" => lexer::Token::Signed, 
+        "sizeof" => lexer::Token::Sizeof, 
+        "static" => lexer::Token::Static, 
+        "struct" => lexer::Token::Struct,
+        "switch" => lexer::Token::Switch, 
+        "typedef" => lexer::Token::Typedef, 
+        "union" => lexer::Token::Union, 
+        "unsigned" => lexer::Token::Unsigned, 
+        "void" => lexer::Token::Void,
+        "volatile" => lexer::Token::Volatile, 
+        "while" => lexer::Token::While,  
+        "_Alignas" => lexer::Token::Alignas,  
+        "_Alignof" => lexer::Token::Alignof, 
+        "_Atomic" => lexer::Token::Atomic,
+        "_Bool" => lexer::Token::Bool, 
+        "_Complex" => lexer::Token::Complex, 
+        "_Generic" => lexer::Token::Generic, 
+        "_Imaginary" => lexer::Token::Imaginary, 
+        "_Noreturn" => lexer::Token::Noreturn, 
+        "_Static_assert" => lexer::Token::StaticAssert, 
+        "_Thread_local" => lexer::Token::ThreadLocal,
 
-        TypedefName => lexer::Tok::TypedefName,
-        Identifier => lexer::Tok::Identifier,
-        Constant => lexer::Tok::Arrow,
-        EnumerationConstant => lexer::Tok::Identifier,
-        StringLiteral => lexer::Tok::StringLiteral,
+        TypedefName => lexer::Token::TypedefName,
+        Identifier => lexer::Token::Identifier,
+        Constant => lexer::Token::Arrow,
+        EnumerationConstant => lexer::Token::Identifier,
+        StringLiteral => lexer::Token::StringLiteral,
 
-        ")" => lexer::Tok::RightCurvedParenthesis,
-        "(" => lexer::Tok::LeftCurvedParenthesis,
-        "," => lexer::Tok::Comma,
-        ":" => lexer::Tok::Colon,
-        "[" => lexer::Tok::LeftSquareBracket,
-        "]" => lexer::Tok::RightSquaredBracket,
-        "." => lexer::Tok::Dot,
-        "->" => lexer::Tok::Arrow,
-        "++" => lexer::Tok::TwoPluses,
-        "--" => lexer::Tok::TwoMinuses,
-        "{" => lexer::Tok::LeftCurlyBrace,
-        "}" => lexer::Tok::RightCurlyBrace,
-        "&" => lexer::Tok::Ampersand,
-        "*" => lexer::Tok::Star,
-        "+" => lexer::Tok::Plus,
-        "-" => lexer::Tok::Minus, 
-        "~" => lexer::Tok::Wave,
-        "!" => lexer::Tok::ExclamationMark,
-        "/" => lexer::Tok::Slash,
-        "%" => lexer::Tok::Percent,
-        "<<" => lexer::Tok::TwoSmaller,
-        ">>" => lexer::Tok::TwoLager,
-        "<" => lexer::Tok::Smaller,
-        ">" => lexer::Tok::Lager,
-        "<=" => lexer::Tok::LeOrEq,
-        ">=" => lexer::Tok::GeOrEq,
-        "==" => lexer::Tok::Equal, 
-        "!=" => lexer::Tok::NotEq,
-        "^" => lexer::Tok::CheckMark,
-        "|" => lexer::Tok::VerticalLine,
-        "&&" => lexer::Tok::TwoAmpersand,
-        "||" => lexer::Tok::TwoVerticalLine,
-        "?" => lexer::Tok::QuestionMark,
-        "=" => lexer::Tok::Asign,
-        "*=" => lexer::Tok::StarAsign,
-        "/=" => lexer::Tok::SlashAsign, 
-        "%=" => lexer::Tok::S1,
-        "+=" => lexer::Tok::S2,
-        "-=" => lexer::Tok::S3,
-        "<<=" => lexer::Tok::S4,
-        ">>=" => lexer::Tok::S5,
-        "&=" => lexer::Tok::AmpersandAsign,
-        "^=" => lexer::Tok::CheckMarkAsign,
-        "|=" => lexer::Tok::VerticalAsign,
-        ";" => lexer::Tok::Semicolon,
-        "..." => lexer::Tok::ThreeDots,
+        ")" => lexer::Token::RParenthesis,
+        "(" => lexer::Token::LParenthesis,
+        "," => lexer::Token::Comma,
+        ":" => lexer::Token::Colon,
+        "[" => lexer::Token::LBracket,
+        "]" => lexer::Token::RBracket,
+        "." => lexer::Token::Dot,
+        "->" => lexer::Token::Arrow,
+        "++" => lexer::Token::TwoPluses,
+        "--" => lexer::Token::TwoMinuses,
+        "{" => lexer::Token::LBrace,
+        "}" => lexer::Token::RBrace,
+        "&" => lexer::Token::Ampersand,
+        "*" => lexer::Token::Asterisk,
+        "+" => lexer::Token::Plus,
+        "-" => lexer::Token::Minus, 
+        "~" => lexer::Token::Tilde,
+        "!" => lexer::Token::ExclamationMark,
+        "/" => lexer::Token::Slash,
+        "%" => lexer::Token::Percent,
+        "<<" => lexer::Token::TwoSmaller,
+        ">>" => lexer::Token::TwoLager,
+        "<" => lexer::Token::Smaller,
+        ">" => lexer::Token::Lager,
+        "<=" => lexer::Token::LeOrEq,
+        ">=" => lexer::Token::GeOrEq,
+        "==" => lexer::Token::Equal, 
+        "!=" => lexer::Token::NotEq,
+        "^" => lexer::Token::Caret,
+        "|" => lexer::Token::Bar,
+        "&&" => lexer::Token::WAmpersand,
+        "||" => lexer::Token::WBar,
+        "?" => lexer::Token::QuestionMark,
+        "=" => lexer::Token::Assign,
+        "*=" => lexer::Token::AsteriskAssign,
+        "/=" => lexer::Token::SlashAssign, 
+        "%=" => lexer::Token::PercentAssign,
+        "+=" => lexer::Token::PlusAssign,
+        "-=" => lexer::Token::MinusWHyphen,
+        "<<=" => lexer::Token::LGuillemetsAssign,
+        ">>=" => lexer::Token::RGuillemetsAssign,
+        "&=" => lexer::Token::AmpersandAssign,
+        "^=" => lexer::Token::CaretAssign,
+        "|=" => lexer::Token::VBarAssign,
+        ";" => lexer::Token::Semicolon,
+        "..." => lexer::Token::ThreeDots,
     }
 }
+
+Str<R>: String =
+    <l: @L> <rule: R> <r: @R> 
+        => input[l..r].to_string()
+;
 
 //////////////////////////////////////////////////
 /// External definitions /////////////////////////
 //////////////////////////////////////////////////
 
-pub TranslationUnit: ast::Ast = <items: ExternalDeclaration*> => ast::Ast(items);
+pub TranslationUnit: ast::Ast = 
+    <items: ExternalDeclaration*> 
+        => ast::Ast(items)
+;
 
 ExternalDeclaration: ast::ExternalDeclaration = {
-    FunctionDefinition => ast::FunctionDefinition(<>),
-    Declaration,
-};
-
-FunctionDefinition: ast::FunctionDefinition = {
-    <specifiers: DeclarationSpecifiers> <declarator: Declarator> <declaration: DeclarationList?> <compound: CompoundStatement>
-        => ast::FunctionDefinition{specifiers, declarator, declaration, compound}
+    FunctionDefinition => ast::ExternalDeclaration::FunctionDefinition(Box::new(<>)),
+    Declaration => ast::ExternalDeclaration::Declaration(Box::new(<>)),
 };
 
 DeclarationList = Declaration+;
+
+FunctionDefinition: ast::FunctionDefinition = {
+    <specifiers: DeclarationSpecifiers> <declarator: Declarator> <declaration: DeclarationList?> <compound: CompoundStatement>
+        //ast::FunctionDefinition::new(specifiers, declarator, declaration, compound)
+        => todo!()
+};
 
 //////////////////////////////////////////////////
 /// Declarations /////////////////////////////////
 //////////////////////////////////////////////////
 
-Declaration: Box<decl::Decl> = {
+Declaration: decl::Declaration = {
     <dspec: DeclarationSpecifiers> <idec: InitDeclaratorList?> ";" 
-        => decl::Decl::Other(decl::Other{specifiers: dspec, init_declarators: idec}),
-    <sa: StaticAssertDeclaration>
-        => decl::Decl::StaticAssert(sa),
+        => {
+            let dec = idec.or(Default::default()).unwrap();
+            todo!()
+            // decl::Declaration::Other(decl::Other{specifiers: dspec, init_declarators: dec})
+        },
+    StaticAssertDeclaration,
 };
 
+//TODO: shift/reduce conflict 
 DeclarationSpecifier: decl::DeclarationSpecifier = {
     <spec: StorageClassSpecifier>  
         => decl::DeclarationSpecifier::StorageClassSpecifier(spec),
-    <spec: TypeSpecifier>
-        => decl::DeclarationSpecifier::TypeSpecifier(spec), 
-    <spec: TypeQualifier>
-        => decl::DeclarationSpecifier::TypeQualifier(spec), 
-    <spec: FunctionSpecifier>
-        => decl::DeclarationSpecifier::FunctionSpecifier(spec), 
-    <spec: AlignmentSpecifier>
-        => decl::DeclarationSpecifier::AlignmentSpecifier(spec), 
+    // <spec: TypeSpecifier>
+        // => decl::DeclarationSpecifier::TypeSpecifier(spec), 
+    // <spec: TypeQualifier>
+        // => decl::DeclarationSpecifier::TypeQualifier(spec), 
+    // <spec: FunctionSpecifier>
+        // => decl::DeclarationSpecifier::FunctionSpecifier(spec), 
+    // <spec: AlignmentSpecifier> 
+        // => decl::DeclarationSpecifier::AlignmentSpecifier(spec), 
 };
 
-DeclarationSpecifiers = DeclarationSpecifier+;
+DeclarationSpecifiers = DeclarationSpecifier+;  
 
-InitDeclaratorList = {
+InitDeclaratorList: Vec<decl::InitDeclarator> = {
     InitDeclarator ("," InitDeclarator)*
+        => todo!()
 };
 
 InitDeclarator: decl::InitDeclarator = {
     <dec: Declarator> 
-        => decl::InitDeclarator{declarator: dec, initializer: None},
+        => todo!(),
     <dec: Declarator> "=" <ini: Initializer>
-        => decl::InitDeclarator{declarator: dec, initializer: Some(ini)},
+        => todo!(),
 };
 
+//TODO: shift/reduce conflict 
 StorageClassSpecifier: decl::StorageClassSpecifier = {
     "typedef" => decl::StorageClassSpecifier::Typedef,
-    "extern" => decl::StorageClassSpecifier::Extern,
-    "static" => decl::StorageClassSpecifier::Static,
-    "_Thread_local" => decl::StorageClassSpecifier::ThreadLocal,
-    "auto" => decl::StorageClassSpecifier::Auto,
-    "register" => decl::StorageClassSpecifier::Register,
+    // "extern" => decl::StorageClassSpecifier::Extern,
+    // "static" => decl::StorageClassSpecifier::Static,
+    // "_Thread_local" => decl::StorageClassSpecifier::ThreadLocal,
+    // "auto" => decl::StorageClassSpecifier::Auto,
+    // "register" => decl::StorageClassSpecifier::Register,
 };
 
 TypeSpecifier: decl::TypeSpecifier = {
@@ -196,18 +211,21 @@ TypeSpecifier: decl::TypeSpecifier = {
     "_Complex" 
         => decl::TypeSpecifier::Complex,
     <ats: AtomicTypeSpecifier> 
-        => decl::TypeSpecifier::AtomicTypeSpecifier(ats),
+        //decl::TypeSpecifier::AtomicTypeSpecifier(ats)
+        => todo!(),
     <sous: StructOrUnionSpecifier>
         => decl::TypeSpecifier::StructOrUnionSpecifier(sous), 
-    EnumSpecifier 
-        => decl::TypeSpecifier::EnumSpecifier(sous),
+    EnumSpecifier
+        // decl::TypeSpecifier::EnumSpecifier(sous) 
+        => todo!(),
     <tdef: TypedefName> 
-        => decl::TypeSpecifier::TypedefName(sous),
+        //decl::TypeSpecifier::TypedefName(sous)
+        => todo!(),
 };
 
 StructOrUnionSpecifier: decl::StructOrUnionSpecifier = {
-    StructOrUnion Identifier? "{" StructDeclarationList "}"
-    StructOrUnion Identifier
+    StructOrUnion Identifier? "{" StructDeclarationList "}" => todo!(),
+    StructOrUnion Identifier => todo!(),
 };
 
 StructOrUnion: decl::ObjKind = {
@@ -218,37 +236,47 @@ StructOrUnion: decl::ObjKind = {
 StructDeclarationList = StructDeclaration+;
 
 StructDeclaration: decl::StructDeclaration = {
-    SpecifierQualifierList StructDeclaratorList? ";",
-    StaticAssertDeclaration,
+    SpecifierQualifierList StructDeclaratorList? ";"
+        => todo!(),
+    StaticAssertDeclaration
+        => todo!(),
 };
 
 SpecifierQualifierList = 
     TypeSpecifier TypeQualifier
 ;
 
-StructDeclaratorList = StructDeclarator ("," StructDeclarator)*;
-
-StructDeclarator: decl::StructDeclarator = {
-    Declarator,
-    Declarator? ":" ConstantExpression,
-}
-
-EnumSpecifier = {
-    "enum" Identifier? "{" EnumeratorList ","? "}"
-    "enum" Identifier
-};
-
-EnumeratorList = 
-    Enumerator ("," Enumerator)*
+StructDeclaratorList: Vec<decl::StructDeclarator> = 
+    StructDeclarator <n: ("," StructDeclarator)*> 
+        => todo!() 
 ;
 
-Enumerator =
-    EnumerationConstant ("=" ConstantExpression)?
+//TODO: shift/reduce conflict 
+StructDeclarator: decl::StructDeclarator = {
+    Declarator => todo!(),
+    // Declarator? ":" ConstantExpression,
+}
+
+EnumSpecifier: decl::EnumSpecifier = {
+    "enum" Identifier? ("{" EnumeratorList ","? "}")?
+        => todo!()
+};
+
+#[inline]
+EnumeratorList: Vec<decl::Enumerator> = 
+    Enumerator <l: ("," Enumerator)*> 
+        => todo!()
+;
+
+Enumerator: Vec<decl::Enumerator> =
+    EnumerationConstant <c: ("=" ConstantExpression)?> 
+        => todo!()
 ;
 
 AtomicTypeSpecifier: decl::AtomicTypeSpecifier =
     "_Atomic" "(" <typename: TypeName> ")"
-        => AtomicTypeSpecifier{typename}
+        //AtomicTypeSpecifier{typename}
+        => todo!()
 ;
 
 TypeQualifier: decl::TypeQualifier = {
@@ -268,25 +296,31 @@ AlignmentSpecifier = {
     "_Alignas" "(" ConstantExpression ")"
 }
 
-Declarator =    
-    Pointer? DirectDeclarator
+Declarator: decl::Declarator =    
+    Pointer? DirectDeclarator => todo!()
 ;
 
 DirectDeclarator = Identifier;
 
 Pointer = ("*" TypeQualifierList?)+;
-TypeQualifierList: Vec<TypeQualifier> = TypeQualifier+;
+TypeQualifierList: Vec<decl::TypeQualifier> = TypeQualifier+;
 
-ParameterTypeList = {
-    ParameterList
-    ParameterList "," "..."
-};
+ParameterTypeList: decl::ParameterTypeList = 
+    <f: ParameterList> <is_variadic: ("," "...")?>
+        => todo!()
+;
 
-ParameterList = ParameterDeclaration ("," ParameterDeclaration)*;
+#[inline]
+ParameterList: Vec<decl::ParameterDeclaration> = 
+    <f: ParameterDeclaration> <other: ("," ParameterDeclaration)*> 
+        => todo!()
+;
 
-ParameterDeclaration = {
-    DeclarationSpecifiers Declarator
+ParameterDeclaration: decl::ParameterDeclaration = {
+    DeclarationSpecifiers Declarator 
+        => decl::ParameterDeclaration{},
     DeclarationSpecifiers AbstractDeclarator?
+        => decl::ParameterDeclaration{},
 };
 
 IdentifierList = Identifier ("," Identifier)*;
@@ -294,63 +328,72 @@ IdentifierList = Identifier ("," Identifier)*;
 TypeName = SpecifierQualifierList AbstractDeclarator?;
 
 AbstractDeclarator: decl::AbstractDeclarator = {
-    Pointer,
-    Pointer? DirectAbstractDeclarator,
+    Pointer => todo!(),
+    Pointer? DirectAbstractDeclarator => todo!(),
 };
 
 DirectAbstractDeclarator: decl::DirectAbstractDeclarator = {
     "(" AbstractDeclarator ")"
+        => todo!(),
     DirectAbstractDeclarator? "[" TypeQualifierList? AssignmentExpression? "]"
+        => todo!(),
     DirectAbstractDeclarator? "[" "static" TypeQualifierList? AssignmentExpression "]"
+        => todo!(),
     DirectAbstractDeclarator? "[" TypeQualifierList "static" AssignmentExpression "]"
+        => todo!(),
     DirectAbstractDeclarator? "[" "*" "]"
+        => todo!(),
     DirectAbstractDeclarator? "(" ParameterTypeList? ")"
+        => todo!(),
 };
 
 Initializer: decl::Initializer = {
-    <ae: AssignmentExpression> => decl::Initializer::AssignmentExpression
-    "{" <il: InitializerList> ","? "}" => decl::Initializer::InitializerList(il),
+    <ae: AssignmentExpression>
+        => todo!(),
+    "{" <il: InitializerList> ","? "}" 
+        => decl::Initializer::InitializerList(il),
 };
 
-InitializerList: decl::InitializerList= 
+#[inline]
+InitializerList: decl::InitializerList = 
     Designation? Initializer ("," Designation? Initializer)* 
         => todo!()
 ;
 
-Designation: Vec<decl::Designator> = DesignatorList "=";
+Designation: Vec<decl::Designator> = <DesignatorList> "=";
 
 DesignatorList: Vec<decl::Designator> = Designator+;
 
 Designator: decl::Designator = {
-    "[" <expr: ConstantExpression> "]" => decl::Designator::Index(expr),
-    "." <ident: Identifier> => decl::Designator::Dot(ident),
+    "[" <expr: ConstantExpression> "]" 
+        => decl::Designator::new_index(expr),
+    "." <ident: Str<Identifier>> 
+        => decl::Designator::new_dot(ident),
 };
 
-StaticAssertDeclaration: Box<decl::Decl> = 
-    "_Static_assert" "(" <predicate: ConstantExpression> "," <message: StringLiteral> ")" ";"
-        => Box::new(decl::Decl::StaticAssert(decl::StaticAssert{predicate, message}))
+StaticAssertDeclaration: decl::Declaration = 
+    "_Static_assert" "(" <expr: ConstantExpression> "," <msg: Str<StringLiteral>> ")" ";"
+        => decl::StaticAssert::new(expr, msg)
 ;
-
 
 //////////////////////////////////////////////////
 /// Expression ///////////////////////////////////
 //////////////////////////////////////////////////
 
-PrimaryExpression: Box<expr::Expression> = {
-    Identifier,
-        => Box::new(expr::Expression::Identifier(ident)),
-    Constant,
-    StringLiteral,
-    "(" Expression ")",
-    GenericSelection,
+//TODO: shift/reduce conflict 
+PrimaryExpression: expr::Expression = {
+    <Str<Identifier>>
+        => expr::Expression::Identifier(<>),
+    //Constant,
+    //StringLiteral,
+    //"(" Expression ")",
+    //GenericSelection,
 };
 
-GenericSelection: Box<expr::Expression> = {
+GenericSelection: expr::Expression = 
     "_Generic" "(" <expression: AssignmentExpression> "," <association_list: GenericAssocList> ")" 
-        => Box::new(expr::Expression::GenericSelection(expr::GenericSelectionExpr{
-            expression, association_list
-        }))
-};
+        => todo!()
+;
 
 GenericAssocList: Vec<expr::GenericAssociation> = { 
     GenericAssociation ("," GenericAssociation)* 
@@ -359,181 +402,190 @@ GenericAssocList: Vec<expr::GenericAssociation> = {
 
 GenericAssociation: expr::GenericAssociation = {
     TypeName ":" <expression: AssignmentExpression>
-        => expr::GenericAssociation{expression},
+        => todo!(),
     "default" ":" <expression: AssignmentExpression>
-        => expr::GenericAssociation{expression},
+        => todo!(),
 };
 
-PostfixExpression: Box<expr::Expression> = {
+PostfixExpression: expr::Expression = {
     PrimaryExpression,
-    PostfixExpression "[" Expression "]" 
-        => expr::TwoOperandsExpr::new_subscript(<>),
-    PostfixExpression "(" ArgumentExpressionList? ")"
-        => expr::CallExpr::new(<>),
-    PostfixExpression "." Identifier
-        => expr::TwoOperandsExpr::new_access(<>),
-    PostfixExpression "->" Identifier
-        => expr::TwoOperandsExpr::new_ptr_access(<>),
-    PostfixExpression "++"
-        => expr::OneOperandExpr::new_postincrement(<>),
-    PostfixExpression "--"
-        => expr::OneOperandExpr::new_postdecrement(<>),
-    "(" TypeName ")" "{" InitializerList "}"
-        => expr::CompoundLiteral::new(i),
-    "(" TypeName ")" "{" <i: InitializerList> "," "}"
-        => expr::CompoundLiteral::new(i),
+    <lhs: PostfixExpression> "[" <rhs: Expression> "]" 
+        => expr::TwoOperandsExpr::new_subscript(lhs, rhs),
+    <callie: PostfixExpression> "(" <args: ArgumentExpressionList?> ")"
+        => expr::CallExpr::new(callie, args.or(Default::default()).unwrap()),
+    <lhs: PostfixExpression> "." <ident: Str<Identifier>>
+        => {
+            let rhs = expr::Expression::Identifier(ident);
+            expr::TwoOperandsExpr::new_access(lhs, rhs)
+        },
+    <lhs: PostfixExpression> "->" <ident: Str<Identifier>>
+        => {
+            let rhs = expr::Expression::Identifier(ident);
+            expr::TwoOperandsExpr::new_ptr_access(lhs, rhs)
+        },
+    <expr: PostfixExpression> "++"
+        => expr::OneOperandExpr::new_postincrement(expr),
+    <expr: PostfixExpression> "--"
+        => expr::OneOperandExpr::new_postdecrement(expr),
+    "(" TypeName ")" "{" <init_list: InitializerList> "}"
+        => expr::CompoundLiteral::new(Box::new(init_list)),
+    "(" TypeName ")" "{" <init_list: InitializerList> "," "}"
+        => expr::CompoundLiteral::new(Box::new(init_list)),
 };
 
-ArgumentExpressionList: Box<expr::Expression> = {
-    AssignmentExpression, <items: ("," AssignmentExpression)*>
+ArgumentExpressionList: Vec<expr::Expression> = {
+    AssignmentExpression <items: ("," AssignmentExpression)*>
         => todo!()
 };
 
-UnaryExpression: Box<expr::Expression> = {
-    PostfixExpression,
-    "++" UnaryExpression 
-        => expr::OneOperandExpr::new_increment(<>),
-    "--" UnaryExpression 
-        => expr::OneOperandExpr::new_decrement(<>),
-    UnaryOperator CastExpression,
-    "sizeof" UnaryExpression 
-        => expr::Sizeof::new(<>),
-    "sizeof" "(" TypeName ")" 
-        => expr::Sizeof::new(<>),
-    "_Alignof" "(" TypeName ")" 
-        => expr::AlignOf::new(<>),
+//TODO: shift/reduce conflict 
+UnaryExpression: expr::Expression = {
+    //PostfixExpression,
+    //"++" UnaryExpression 
+    //    => expr::OneOperandExpr::new_increment(<>),
+    //"--" UnaryExpression 
+    //    => expr::OneOperandExpr::new_decrement(<>),
+    //UnaryOperator CastExpression,
+    //"sizeof" UnaryExpression 
+    //    => expr::Sizeof::new(<>),
+    //"sizeof" "(" TypeName ")" 
+    //    => expr::Sizeof::new(<>),
+    //"_Alignof" "(" TypeName ")" 
+    //    => expr::AlignOf::new(<>),
 };
 
-UnaryOperator: expr::UnaryOp = {
-    "&" => expr::UnaryOp::Address,
-    "*" => expr::UnaryOp::Indirection,
-    "+" => expr::UnaryOp::Positive,
-    "-" => expr::UnaryOp::Negative,
-    "~" => expr::UnaryOp::BitwiseNot,
-    "!" => expr::UnaryOp::LogicalNot,
-};
+//TODO: shift/reduce conflict 
+//UnaryOperator: expr::UnaryOp = {
+    //"&" => expr::UnaryOp::Address,
+    // "*" => expr::UnaryOp::Indirection,
+    // "+" => expr::UnaryOp::Positive,
+    // "-" => expr::UnaryOp::Negative,
+    // "~" => expr::UnaryOp::BitwiseNot,
+    // "!" => expr::UnaryOp::LogicalNot,
+//};
 
-CastExpression: Box<expr::Expression> = {
+CastExpression: expr::Expression = {
     UnaryExpression,
-    "(" TypeName ")" CastExpression
-        => expr::CastExr::new(<>),
+    "(" TypeName ")" <expr: CastExpression>
+        => expr::CastExr::new((), expr),
 };
 
-MultiplicativeExpression: Box<expr::Expression> = {
+MultiplicativeExpression: expr::Expression = {
     CastExpression,
-    MultiplicativeExpression "*" CastExpression
-        => expr::TwoOperandsExpr::new_mul(<>),
-    MultiplicativeExpression "/" CastExpression
-        => expr::TwoOperandsExpr::new_div(<>),
-    MultiplicativeExpression "%" CastExpression
-        => expr::TwoOperandsExpr::new_rem(<>),
+    <lhs: MultiplicativeExpression> "*" <rhs: CastExpression>
+        => expr::TwoOperandsExpr::new_mul(lhs, rhs),
+    <lhs: MultiplicativeExpression> "/" <rhs: CastExpression>
+        => expr::TwoOperandsExpr::new_div(lhs, rhs),
+    <lhs: MultiplicativeExpression> "%" <rhs: CastExpression>
+        => expr::TwoOperandsExpr::new_rem(lhs, rhs),
 };
 
-AdditiveExpression: Box<expr::Expression> = {
+AdditiveExpression: expr::Expression = {
     MultiplicativeExpression,
-    AdditiveExpression "+" MultiplicativeExpression
-        => expr::TwoOperandsExpr::new_add(<>),
-    AdditiveExpression "-" MultiplicativeExpression
-        => expr::TwoOperandsExpr::new_sub(<>),
+    <lhs: AdditiveExpression> "+" <rhs: MultiplicativeExpression>
+        => expr::TwoOperandsExpr::new_add(lhs, rhs),
+    <lhs: AdditiveExpression> "-" <rhs: MultiplicativeExpression>
+        => expr::TwoOperandsExpr::new_sub(lhs, rhs),
 };
 
-ShiftExpression: Box<expr::Expression> = {
+ShiftExpression: expr::Expression = {
     AdditiveExpression,
-    ShiftExpression "<<" AdditiveExpression
-        => expr::TwoOperandsExpr::new_left_shift(<>),
-    ShiftExpression ">>" AdditiveExpression
-        => expr::TwoOperandsExpr::new_right_shift(<>),
+    <lhs: ShiftExpression> "<<" <rhs: AdditiveExpression>
+        => expr::TwoOperandsExpr::new_left_shift(lhs, rhs),
+    <lhs: ShiftExpression> ">>" <rhs: AdditiveExpression>
+        => expr::TwoOperandsExpr::new_right_shift(lhs, rhs),
 };
 
-RelationalExpression: Box<expr::Expression> = {
+RelationalExpression: expr::Expression = {
     ShiftExpression,
-    RelationalExpression "<" ShiftExpression
-        => expr::TwoOperandsExpr::new_le(<>),
-    RelationalExpression ">" ShiftExpression 
-        => expr::TwoOperandsExpr::new_ge(<>),
-    RelationalExpression "<=" ShiftExpression
-        => expr::TwoOperandsExpr::new_ge_or_eq(<>),
-    RelationalExpression ">=" ShiftExpression
-        => expr::TwoOperandsExpr::new_ge_or_eq(<>),
+    <lhs: RelationalExpression> "<" <rhs: ShiftExpression>
+        => expr::TwoOperandsExpr::new_le(lhs, rhs),
+    <lhs: RelationalExpression> ">" <rhs: ShiftExpression> 
+        => expr::TwoOperandsExpr::new_ge(lhs, rhs),
+    <lhs: RelationalExpression> "<=" <rhs: ShiftExpression>
+        => expr::TwoOperandsExpr::new_ge_or_eq(lhs, rhs),
+    <lhs: RelationalExpression> ">=" <rhs: ShiftExpression>
+        => expr::TwoOperandsExpr::new_ge_or_eq(lhs, rhs),
 };
 
-EqualityExpression: Box<expr::Expression> = {
+EqualityExpression: expr::Expression = {
     RelationalExpression,
-    EqualityExpression "==" RelationalExpression
-        => expr::TwoOperandsExpr::new_eq(),
-    EqualityExpression "!=" RelationalExpression 
-        => expr::TwoOperandsExpr::new_not_eq(),
+    <lhs: EqualityExpression> "==" <rhs: RelationalExpression>
+        => expr::TwoOperandsExpr::new_eq(lhs, rhs),
+    <lhs: EqualityExpression> "!=" <rhs: RelationalExpression> 
+        => expr::TwoOperandsExpr::new_not_eq(lhs, rhs),
 };
 
-AndExpression: Box<expr::Expression> = {
+AndExpression: expr::Expression = {
     EqualityExpression
-    AndExpression "&" EqualityExpression 
-        => expr::TwoOperandsExpr::new_bw_and(<>),
+    <lhs: AndExpression> "&" <rhs: EqualityExpression>
+        => expr::TwoOperandsExpr::new_bw_and(lhs, rhs),
 }
 
-ExclusiveOrExpression: Box<expr::Expression> = {
+ExclusiveOrExpression: expr::Expression = {
     AndExpression,
-    ExclusiveOrExpression "^" AndExpression 
-        => expr::TwoOperandsExpr::new_bw_xor(<>),
+    <lhs: ExclusiveOrExpression> "^" <rhs: AndExpression> 
+        => expr::TwoOperandsExpr::new_bw_xor(lhs, rhs),
 };
 
-InclusiveOrExpression: Box<expr::Expression> = {
+InclusiveOrExpression: expr::Expression = {
     ExclusiveOrExpression,
-    InclusiveOrExpression "|" ExclusiveOrExpression 
-        => expr::TwoOperandsExpr::new_bw_or(<>),
+    <lhs: InclusiveOrExpression> "|" <rhs: ExclusiveOrExpression> 
+        => expr::TwoOperandsExpr::new_bw_or(lhs, rhs),
 };
 
-LogicalAndExpression: Box<expr::Expression> = {
+LogicalAndExpression: expr::Expression = {
     InclusiveOrExpression,
-    LogicalAndExpression "&&" InclusiveOrExpression 
-        => expr::TwoOperandsExpr::new_logical_and(<>),
+    <lhs: LogicalAndExpression> "&&" <rhs: InclusiveOrExpression> 
+        => expr::TwoOperandsExpr::new_logical_and(lhs, rhs),
 };
 
-LogicalOrExpression: Box<expr::Expression> = {
+LogicalOrExpression: expr::Expression = {
     LogicalAndExpression,
-    LogicalOrExpression "||" LogicalAndExpression
-        => expr::TwoOperandsExpr::new_logical_or(<>),
+    <lhs: LogicalOrExpression> "||" <rhs: LogicalAndExpression>
+        => expr::TwoOperandsExpr::new_logical_or(lhs, rhs),
 };
 
-ConditionalExpression: Box<expr::Expression> = {
+ConditionalExpression: expr::Expression = {
     LogicalOrExpression,
     LogicalOrExpression "?" Expression ":" ConditionalExpression
-        => Box::new(expr::Expression::Ternary(expr::Ternary{})),
+        => expr::Expression::Ternary(Box::new(expr::Ternary{})),
 };
 
-AssignmentExpression: Box<expr::Expression> = {
+AssignmentExpression: expr::Expression = {
     ConditionalExpression,
     <lhs: UnaryExpression> <op: AssignmentOperator> <rhs: AssignmentExpression>
-        => Box::new(expr::Expression::TwoOperands(expr::TwoOperandsExpr{lhs, op, rhs})),
+        => expr::Expression::TwoOperands(Box::new(expr::TwoOperandsExpr{lhs, op, rhs})),
 };
 
-AssignmentOperator: expr::BinOp = {
-    "=" => expr::BinOp::Assign,
-    "*=" => expr::BinOp::MulAssign,
-    "/=" => expr::BinOp::DivAssign,
-    "%=" => expr::BinOp::ModAssign,
-    "+=" => expr::BinOp::AddAssign,
-    "-=" => expr::BinOp::SubAssign,
-    "<<=" => expr::BinOp::BwLShAssign,
-    ">>=" => expr::BinOp::BwRShAssign,
-    "&=" => expr::BinOp::BwAndAssign,
-    "^=" => expr::BinOp::BwXorAssign,
-    "|=" => expr::BinOp::BwOrAssign,
+AssignmentOperator: expr::BiTag = {
+    "=" => expr::BiTag::Assign,
+    "*=" => expr::BiTag::MulAssign,
+    "/=" => expr::BiTag::DivAssign,
+    "%=" => expr::BiTag::RemAssign,
+    "+=" => expr::BiTag::AddAssign,
+    "-=" => expr::BiTag::SubAssign,
+    "<<=" => expr::BiTag::BwLShAssign,
+    ">>=" => expr::BiTag::BwRShAssign,
+    "&=" => expr::BiTag::BwAndAssign,
+    "^=" => expr::BiTag::BwXorAssign,
+    "|=" => expr::BiTag::BwOrAssign,
 };
 
-Expression: Box<expr::Expression> = {
+//TODO: expr::TwoOperandsExpr::new_comma()
+Expression: expr::Expression = 
     AssignmentExpression ("," AssignmentExpression)* 
-        => expr::TwoOperandsExpr::new_assign(<>),
-};
+        => todo!()
+;
 
-ConstantExpression: Box<expr::Expression> = ConditionalExpression;
+ConstantExpression: expr::Expression = ConditionalExpression;
 
 //////////////////////////////////////////////////
 /// Statements ///////////////////////////////////
 //////////////////////////////////////////////////
 
-Statement: Box<stmt::Statement> = {
-    LabeledStatement
+Statement: stmt::Statement = {
+    LabeledStatement,
     CompoundStatement,
     ExpressionStatement,
     SelectionStatement,
@@ -541,63 +593,67 @@ Statement: Box<stmt::Statement> = {
     JumpStatement,
 };
 
-CompoundStatement: Box<stmt::Statement> = {
-    "{" BlockItem* "}" 
-        => expr::CompoundLiteral::new(<>),
+CompoundStatement: stmt::Statement = {
+    "{" <items: BlockItem*> "}" 
+        => stmt::CompoundStmt::new(items),
 };  
 
 BlockItem: stmt::BlockItem = {
-    <d: Declaration> => stmt::BlockItem::Declaration(d),
-    <s: Statement> => stmt::BlockItem::Statement(s),
+    Declaration => stmt::BlockItem::Declaration(<>),
+    Statement => stmt::BlockItem::Statement(<>),
 };
 
 ExpressionStatement: stmt::Statement = {
-    Expression ";" => stmt::Statement::new_,
+    <expr: Expression> ";" => stmt::Statement::new_expr_stmt(expr),
 };
 
 LabeledStatement: stmt::Statement = {
-    <label: Identifier> ":" <marked: Statement>
-        => Box::new(stmt::Statement::Labeled(stmt::Labeled{label, marked})),
+    <label: Str<Identifier>> ":" <stmt: Statement>
+        => stmt::Labeled::new(label, stmt),
     "case" <constant: ConstantExpression> ":" <body: Statement> 
-        => Box::new(stmt::Statement::Case(stmt::Case{constant, body})),
+        => stmt::Case::new(constant, body),
     "default" ":" <body: Statement> 
-        => Box::new(stmt::Statement::Default(stmt::Default{body})),
+        => stmt::Default::new(body),
 };
 
+// TODO: shift/reduce conflict - dangling else 
+// It can be resolved by using 'precedence' or 'associativity'
+// Also for LR(1) avalible special sintax https://en.wikipedia.org/wiki/Dangling_else
+// https://www.gnu.org/software/bison/manual/html_node/Non-Operators.html
 SelectionStatement: stmt::Statement = {
-    "if" "(" <pred: Expression> ")" <on_success: Statement> <on_failure: ("else" Statement)?> 
-        => {
-            if on_failure.is_some() {
-                return stmt::Statement::IfElse(stmt::IfStmt{predicate: pred, first_stmt: on_success, second_stmt: on_failure});
-            } else {
-                return stmt::Statement::If(stmt::IfStmt{predicate: pred, first_stmt: on_success});
-            }
-        },  
-    "switch" "(" Expression ")" Statement 
-        => stmt::Statement::new_switch(<>),
+    // #[precedence(level="2")]
+    "if" "(" <pred: Expression> ")" <on_success: Statement>  
+        => stmt::IfStmt::new(pred, on_success),  
+    // #[precedence(level="1")]
+    // "if" "(" <pred: Expression> ")" <on_success: Statement> "else" Statement
+        // => stmt::Statement::IfElse(stmt::IfStmt{predicate: pred, first_stmt: on_success, second_stmt: on_failure}),
+    // #[precedence(level="0")]
+    "switch" "(" <controlling: Expression> ")" <body: Statement> 
+        => stmt::Statement::new_switch(controlling, body),
 };
 
+//TODO: shift/reduce conflict 
 ForInitializerPart: stmt::ForInit = {
-    Expression ";" => stmt::ForInit::Expression(<>),
-    Declaration => stmt::ForInit::Declaration(<>),
+    //Expression ";" => stmt::ForInit::Expression(<>),
+    Declaration => stmt::ForInit::Declaration(Box::new(<>)),
 };
 
 IterationStatement: stmt::Statement = {
-    "while" "(" Expression ")" Statement 
-        => stmt::Statement::new_while(<>),
-    "do" Statement "while" "(" Expression ")" ";"
-        => stmt::Statement::new_do_while(<>),
-    "for" "(" ForInitializerPart? Expression? ";" Expression? ")" Statement
-        => stmt::Statement::new_for(<>),
+    "while" "(" <pred: Expression> ")" <body: Statement> 
+        => stmt::Statement::new_while(pred, body),
+    "do" <body: Statement> "while" "(" <pred: Expression> ")" ";"
+        => stmt::Statement::new_do_while(pred, body),
+    "for" "(" <init: ForInitializerPart?> <pred: Expression?> ";" <step: Expression?> ")" <body: Statement>
+        => stmt::Statement::new_for(init, pred, step, body),
 };
 
 JumpStatement: stmt::Statement = {
-    "goto" Identifier ";" 
-        => stmt::Statement::new_goto(<>),
+    "goto" <ident: Str<Identifier>> ";" 
+        => stmt::Statement::new_goto(ident),
     "continue" ";" 
         => stmt::Statement::new_continue(),
     "break" ";" 
         => stmt::Statement::new_break(),
-    "return" Expression ";" 
-        => stmt::Statement::new_return(<>),
+    "return" <expr: Expression?> ";" 
+        => stmt::Statement::new_return(expr),
 };
