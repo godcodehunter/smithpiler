@@ -70,8 +70,8 @@ pub enum BlockItem {
 pub struct CompoundStmt(pub Vec<BlockItem>);
 
 impl CompoundStmt {
-    pub fn new(items: Vec<BlockItem>) -> Statement {
-        Statement::Compound(CompoundStmt(items))
+    pub fn new(items: Vec<BlockItem>) -> Self {
+        Self(items)
     }
 }
 

@@ -159,6 +159,10 @@ impl StaticAssert {
     }
 }
 
+pub enum DirectDeclarator {
+    FunctionDeclarators,
+}
+
 pub enum AbstractDeclarator {
     
 }

@@ -56,7 +56,6 @@ extern {
         TypedefName => lexer::Token::TypedefName,
         Identifier => lexer::Token::Identifier,
         Constant => lexer::Token::Arrow,
-        EnumerationConstant => lexer::Token::Identifier,
         StringLiteral => lexer::Token::StringLiteral,
 
         ")" => lexer::Token::RParenthesis,
@@ -123,16 +122,17 @@ pub TranslationUnit: ast::Ast =
 ;
 
 ExternalDeclaration: ast::ExternalDeclaration = {
-    FunctionDefinition => ast::ExternalDeclaration::FunctionDefinition(Box::new(<>)),
-    Declaration => ast::ExternalDeclaration::Declaration(Box::new(<>)),
+    FunctionDefinition 
+        => ast::ExternalDeclaration::FunctionDefinition(Box::new(<>)),
+    Declaration 
+        => ast::ExternalDeclaration::Declaration(Box::new(<>)),
 };
 
 DeclarationList = Declaration+;
 
 FunctionDefinition: ast::FunctionDefinition = {
     <specifiers: DeclarationSpecifiers> <declarator: Declarator> <declaration: DeclarationList?> <compound: CompoundStatement>
-        //ast::FunctionDefinition::new(specifiers, declarator, declaration, compound)
-        => todo!()
+        => ast::FunctionDefinition::new(specifiers, declarator, declaration, compound)
 };
 
 //////////////////////////////////////////////////
@@ -153,8 +153,8 @@ Declaration: decl::Declaration = {
 DeclarationSpecifier: decl::DeclarationSpecifier = {
     <spec: StorageClassSpecifier>  
         => decl::DeclarationSpecifier::StorageClassSpecifier(spec),
-    // <spec: TypeSpecifier>
-        // => decl::DeclarationSpecifier::TypeSpecifier(spec), 
+    <spec: TypeSpecifier>
+        => decl::DeclarationSpecifier::TypeSpecifier(spec), 
     // <spec: TypeQualifier>
         // => decl::DeclarationSpecifier::TypeQualifier(spec), 
     // <spec: FunctionSpecifier>
@@ -215,9 +215,10 @@ TypeSpecifier: decl::TypeSpecifier = {
         => todo!(),
     <sous: StructOrUnionSpecifier>
         => decl::TypeSpecifier::StructOrUnionSpecifier(sous), 
-    EnumSpecifier
+    // TODO: !!! 
+    // EnumSpecifier
         // decl::TypeSpecifier::EnumSpecifier(sous) 
-        => todo!(),
+        // => todo!(),
     <tdef: TypedefName> 
         //decl::TypeSpecifier::TypedefName(sous)
         => todo!(),
@@ -268,6 +269,8 @@ EnumeratorList: Vec<decl::Enumerator> =
         => todo!()
 ;
 
+EnumerationConstant = Identifier;
+
 Enumerator: Vec<decl::Enumerator> =
     EnumerationConstant <c: ("=" ConstantExpression)?> 
         => todo!()
@@ -297,23 +300,40 @@ AlignmentSpecifier = {
 }
 
 Declarator: decl::Declarator =    
-    Pointer? DirectDeclarator => todo!()
+    Pointer? DirectDeclarator => decl::Declarator{}
 ;
 
-DirectDeclarator = Identifier;
+DirectDeclarator: decl::DirectDeclarator = {
+    Identifier 
+        => decl::DirectDeclarator::FunctionDeclarators,
+    "(" Declarator ")" 
+        => decl::DirectDeclarator::FunctionDeclarators,
+    DirectDeclarator "[" TypeQualifierList? AssignmentExpression? "]" 
+        => decl::DirectDeclarator::FunctionDeclarators,
+    DirectDeclarator "[" "static" TypeQualifierList? AssignmentExpression "]" 
+        => decl::DirectDeclarator::FunctionDeclarators,
+    DirectDeclarator "[" TypeQualifierList "static" AssignmentExpression "]" 
+        => decl::DirectDeclarator::FunctionDeclarators,
+    DirectDeclarator "[" TypeQualifierList "*" "]" 
+        => decl::DirectDeclarator::FunctionDeclarators,
+    DirectDeclarator "(" ParameterTypeList ")" 
+        => decl::DirectDeclarator::FunctionDeclarators,
+    DirectDeclarator "(" IdentifierList? ")" 
+        => decl::DirectDeclarator::FunctionDeclarators,
+};
 
 Pointer = ("*" TypeQualifierList?)+;
 TypeQualifierList: Vec<decl::TypeQualifier> = TypeQualifier+;
 
 ParameterTypeList: decl::ParameterTypeList = 
     <f: ParameterList> <is_variadic: ("," "...")?>
-        => todo!()
+        => decl::ParameterTypeList{}
 ;
 
 #[inline]
 ParameterList: Vec<decl::ParameterDeclaration> = 
     <f: ParameterDeclaration> <other: ("," ParameterDeclaration)*> 
-        => todo!()
+        => Vec::<decl::ParameterDeclaration>::new()
 ;
 
 ParameterDeclaration: decl::ParameterDeclaration = {
@@ -586,14 +606,14 @@ ConstantExpression: expr::Expression = ConditionalExpression;
 
 Statement: stmt::Statement = {
     LabeledStatement,
-    CompoundStatement,
+    //TODO: CompoundStatement,
     ExpressionStatement,
     SelectionStatement,
     IterationStatement,
     JumpStatement,
 };
 
-CompoundStatement: stmt::Statement = {
+CompoundStatement: stmt::CompoundStmt = {
     "{" <items: BlockItem*> "}" 
         => stmt::CompoundStmt::new(items),
 };  

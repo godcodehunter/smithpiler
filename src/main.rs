@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
 	// let inspect_store = InspectStore::new();
 	let unit = Parser::new(Some(options)).parse(path)?;
+	println!("{}", unit);
 	// let module = Translator::new(inspect_store).translate(unit);
 	// if matches.is_present("dump_llvmir") {
 	// 	unsafe {

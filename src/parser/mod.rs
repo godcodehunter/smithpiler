@@ -12,6 +12,12 @@ pub struct TranslationUnit {
     file: String,
 }
 
+impl std::fmt::Display for TranslationUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{} {}", self.file, self.ast))
+    }
+}
+
 pub struct Options {
     pub dump_lexer: bool,
     pub dump_ast: bool,
