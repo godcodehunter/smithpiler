@@ -1,4 +1,5 @@
 // #![feature(proc_macro_hygiene)]
+#![feature(generic_associated_types)]
 // mod translator;
 mod ast;
 // mod inspect_store;
