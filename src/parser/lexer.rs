@@ -1,32 +1,5 @@
-use sana::{Spanned, Sana};
-
-#[derive(Debug)]
-pub struct ParserError(usize);
-
-impl std::fmt::Display for ParserError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("Unrecognizable token encountered: {}", self.0))
-    }
-}
-
-type ParserItem = Result<(usize, Token, usize), ParserError>;
-
-pub fn token_iter<'input>(input: &'input str, dump_lexer: bool) -> impl Iterator<Item=ParserItem> + 'input {
-    Token::lexer(input)
-        .map(move |tok| {
-            if dump_lexer {
-                println!("{}:{} {:?} {}", tok.start, tok.end, tok.value, &input[tok.start..tok.end]);
-            }
-            tok
-        })
-        .filter(|tok| tok.value != Token::Whitespace)
-        .map(|tok| match tok {
-            Spanned { value: Token::Error, start, ..} =>
-                Err(ParserError(start)),
-            Spanned { value, start, end} =>
-                Ok((start, value, end)),
-        })
-}
+use sana::{Spanned, Sana, Lexer};
+use super::parser::ParserError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Sana)]
 pub enum Token {
@@ -125,12 +98,9 @@ pub enum Token {
     #[regex("[0-9]+")]
     Constant,
 
-    #[regex("\"\"")]
+    #[regex("\"[a-zA-Z_][a-zA-Z0-9_]*\"")]
     StringLiteral,
-
-    #[regex("@@TODO")]
-    TypedefName,
-    
+ 
     #[token("[")]
     LBracket,
     #[token("]")]
@@ -210,7 +180,7 @@ pub enum Token {
     #[token("+=")]
     PlusAssign,
     #[token("-=")]
-    MinusWHyphen,
+    MinusAssign,
     #[token("<<=")]
     LGuillemetsAssign,
     #[token(">>=")]
@@ -231,17 +201,67 @@ pub enum Token {
     Error,
 }
 
-impl std::fmt::Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        //     if tok.is_err() {
-        //         dbg!(tok.unwrap_err());
-        //         break;
-        //     }
-        //     let c = tok.unwrap();
-        // println!("{}:{} {:?} {}", tok.0, tok.2, tok.1, &input[tok.0..tok.2]);
-        todo!()
+pub struct LexerState<'input> {
+    pub(crate) current_item: Option<Spanned<Token>>,
+    pub(crate) iter: Lexer<'input, Token>,
+}
+
+impl<'input> LexerState<'input> {
+    pub fn new(input: &'input str) -> Self {
+        Self{current_item: None, iter: Token::lexer(input)}
+    }
+    
+    pub fn next(&mut self) -> Option<Spanned<Token>> {
+        let item = self.iter.next();
+        self.current_item = item;
+        item
+    }
+
+    pub fn next_meaningful(&mut self) -> Option<Spanned<Token>> {
+        loop {
+            let item = self.iter.next();
+            if item.is_none() {
+                return None;
+            }
+            if item.unwrap().value != Token::Whitespace {
+                self.current_item = item;
+                return item;
+            }
+        }
+        None
+    }
+    
+    pub fn stringify_current_token(&self) -> String {
+        let mut tok = self.current_item.unwrap();
+        use Token::*;
+        match tok.value {
+            Identifier | Constant => (),
+            StringLiteral => {
+                tok.start+=1;
+                tok.end-=1;
+            },
+            _ => panic!(format!("From token {:?} data cannot be retrieved", tok.value)),
+        };
+        self.iter.source()[tok.start..tok.end].to_string()
+    }
+
+    pub fn dump_lexer(mut self) {
+        while let Some(tok) = self.next() {
+            use Token::*;
+            match tok.value {
+                Identifier | Constant | StringLiteral => {
+                    let clipping = self.stringify_current_token();
+                    println!("[{}:{}] {:?} \"{}\"", tok.start, tok.end, tok.value, clipping);
+                },
+                Token::Error => println!("Error"),
+                _ => println!("[{}:{}] {:?}", tok.start, tok.end, tok.value),
+            };
+        }
     }
 }
+
+
+
 
 
 

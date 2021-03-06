@@ -1,7 +1,9 @@
+#![allow(warnings)]
 mod lexer;
 mod parser;
-// #[cfg(test)]
-// mod tests;
+mod public_parser;
+#[cfg(test)]
+mod tests;
 use crate::ast;
 
 use std::{path::Path, io::Read};
@@ -14,7 +16,8 @@ pub struct TranslationUnit {
 
 impl std::fmt::Display for TranslationUnit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{} {}", self.file, self.ast))
+        // f.write_fmt(format_args!("{} {}", self.file, self.ast))
+        todo!()
     }
 }
 
@@ -41,17 +44,20 @@ impl Parser {
         Self{options: options.or(Some(Default::default())).unwrap()}
     }
     
-    pub fn parse(&self, path: &str) -> Result<TranslationUnit, Box<dyn std::error::Error>> {   
+    //TODO TranslationUnit
+    pub fn parse(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {   
         let mut file = File::open(Path::new(path))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         let input = contents.as_str();
-        let tok_iter = lexer::token_iter(input, self.options.dump_lexer);
-        let ast = parser::TranslationUnitParser::new().parse(input, tok_iter)?;
-        if self.options.dump_ast {
-            println!("{}", ast);
-        }
-        Ok(TranslationUnit{ast, file: path.into()})
+        let tok_iter = lexer::LexerState::new(input);
+        tok_iter.dump_lexer();
+    //     // let ast = parser::TranslationUnitParser::new().parse(input, tok_iter)?;
+    //     // if self.options.dump_ast {
+    //     //     println!("{}", ast);
+    //     // }
+    //     // Ok(TranslationUnit{ast, file: path.into()})
+        todo!()
     }
 
 }

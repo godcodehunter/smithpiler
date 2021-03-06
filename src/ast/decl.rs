@@ -1,19 +1,23 @@
+
 use super::r#type::Type;
 use super::expr;
 
+#[derive(Debug)]
 pub enum Declaration {
     Other(Other),
     StaticAssert(StaticAssert),
 }
 
+#[derive(Debug)]
 pub struct Other {
-    specifiers: Vec<DeclarationSpecifier>,
-    init_declarators: Vec<InitDeclarator>, 
+    pub specifiers: Vec<DeclarationSpecifier>,
+    pub init_declarators: Option<Vec<InitDeclarator>>, 
 }
 
+#[derive(Debug)]
 pub struct InitDeclarator {
-    declarator: Declarator,
-    initializer: Option<Initializer>,
+    pub declarator: Declarator,
+    pub initializer: Option<Initializer>,
 }
 
 impl InitDeclarator {
@@ -22,14 +26,16 @@ impl InitDeclarator {
     }
 }
 
+#[derive(Debug)]
 pub enum DeclarationSpecifier {
     StorageClassSpecifier(StorageClassSpecifier),
     TypeSpecifier(TypeSpecifier),
     TypeQualifier(TypeQualifier),
     FunctionSpecifier(FunctionSpecifier),
-    AlignmentSpecifier(AtomicTypeSpecifier),
+    AlignmentSpecifier(AlignmentSpecifier),
 }
 
+#[derive(Debug)]
 pub enum StorageClassSpecifier {
     Typedef,
     Extern,
@@ -39,6 +45,7 @@ pub enum StorageClassSpecifier {
     Register,
 }
 
+#[derive(Debug)]
 pub enum TypeSpecifier {
     Void,
     Char,
@@ -57,49 +64,64 @@ pub enum TypeSpecifier {
     TypedefName,
 }
 
+#[derive(Debug)]
 pub struct AtomicTypeSpecifier {
     typename: (),
 }
 
+#[derive(Debug)]
 pub enum ObjKind  {
     Struct,
     Union,
 }
 
+#[derive(Debug)]
+pub struct AlignmentSpecifier {
+
+}
+
+#[derive(Debug)]
 pub struct StructOrUnionSpecifier {
     kind: ObjKind,
     indetifier: Option<String>,
     decl_list: Vec<StructDeclaration>,
 }
 
+#[derive(Debug)]
 pub enum SpecifierQualifierList {
     
 }
 
+#[derive(Debug)]
 pub enum StructDeclaration {
     Field(Filed),
     StaticAssert(StaticAssert),
 }
 
+#[derive(Debug)]
 pub struct Filed {
     qualifier: SpecifierQualifierList,
     declarator: Vec<StructDeclarator>,
 } 
 
+#[derive(Debug)]
 pub enum StructDeclarator {
     Declarator(Declarator),
     Declarator2(Declarator2),
 }
 
+#[derive(Debug)]
 pub struct Declarator2 {
     declarator: Option<Declarator>,
     constant: Box<expr::Expression>,
 }
 
+#[derive(Debug)]
 pub struct Declarator {
     
 }
 
+#[derive(Debug)]
 pub struct EnumSpecifier {
 
 }
@@ -109,6 +131,7 @@ pub struct Enumerator {
     expression: expr::Expression,
 }
 
+#[derive(Debug)]
 pub enum TypeQualifier {
     Const,
     Restrict,
@@ -116,23 +139,24 @@ pub enum TypeQualifier {
     Atomic,
 }
 
+#[derive(Debug)]
 pub enum FunctionSpecifier {
     Inline,
     Noreturn,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Initializer {
     InitializerList(InitializerList),
     AssignmentExpression,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct InitializerList {
     initializer: Vec<(Vec<Designator>, Initializer)>,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Designator {
     Dot(String),
     Index(expr::Expression),
@@ -148,9 +172,10 @@ impl Designator {
     }
 }
 
+#[derive(Debug)]
 pub struct StaticAssert {
-    predicate: expr::Expression,
-    message: String,
+    pub predicate: expr::Expression,
+    pub message: String,
 }
 
 impl StaticAssert {
@@ -159,22 +184,27 @@ impl StaticAssert {
     }
 }
 
+#[derive(Debug)]
 pub enum DirectDeclarator {
     FunctionDeclarators,
 }
 
+#[derive(Debug)]
 pub enum AbstractDeclarator {
     
 }
 
+#[derive(Debug)]
 pub enum DirectAbstractDeclarator {
 
 }
 
+#[derive(Debug)]
 pub struct ParameterTypeList {
     
 }
 
+#[derive(Debug)]
 pub struct ParameterDeclaration {
     
 }

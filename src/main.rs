@@ -1,5 +1,9 @@
-// #![feature(proc_macro_hygiene)]
-#![feature(generic_associated_types)]
+#![feature(new_uninit)]
+#![feature(concat_idents)]
+#![feature(trait_alias)]
+#![feature(type_alias_impl_trait)]
+#![feature(maybe_uninit_extra)]
+#![feature(maybe_uninit_ref)]
 // mod translator;
 mod ast;
 // mod inspect_store;
@@ -37,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
 	// let inspect_store = InspectStore::new();
 	let unit = Parser::new(Some(options)).parse(path)?;
-	println!("{}", unit);
+	// println!("{}", unit);
 	// let module = Translator::new(inspect_store).translate(unit);
 	// if matches.is_present("dump_llvmir") {
 	// 	unsafe {

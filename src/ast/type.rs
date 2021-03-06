@@ -1,5 +1,9 @@
 use super::expr::Expression;
 
+pub struct Pointer {
+
+}
+
 // Any type in the C programming language.
 #[derive(Clone, Eq, PartialEq)]
 pub enum Type {

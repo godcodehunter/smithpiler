@@ -8,11 +8,13 @@ mod pretty_print;
 
 pub struct Ast(pub Vec<ExternalDeclaration>);
 
+#[derive(Debug)]
 pub enum ExternalDeclaration {
     FunctionDefinition(Box<FunctionDefinition>),
     Declaration(Box<decl::Declaration>),
 }
 
+#[derive(Debug)]
 pub struct FunctionDefinition {
     specifiers: Vec<decl::DeclarationSpecifier>,
     declarator: decl::Declarator,

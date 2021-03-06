@@ -1,6 +1,6 @@
 use super::{r#type::Type, decl};
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 // Any expression in the C programming language.
 pub enum Expression {
     Identifier(String),
@@ -16,18 +16,18 @@ pub enum Expression {
     AlignOf(AlignOf),
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct AlignOf {
 
 }
 
 impl AlignOf {
-    pub fn new() {
-
+    pub fn new() -> Expression {
+        todo!()
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Sizeof {
 
 }
@@ -38,12 +38,12 @@ impl Sizeof {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Ternary {
 
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CompoundLiteral {
     typename: (),
     initializer: Box<decl::InitializerList>,
@@ -55,18 +55,18 @@ impl CompoundLiteral {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct GenericSelectionExpr {
-    expression: Expression,
-    association_list: Vec<GenericAssociation>,
+    pub expression: Expression,
+    pub association_list: Vec<GenericAssociation>,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct GenericAssociation {
-    expression: Expression,
+    pub expression: Expression,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CastExr {
     pub ty: (),
     pub expr: Expression, 
@@ -78,7 +78,7 @@ impl CastExr {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 // A literal expression. For example, "hello world", 141, 666.
 pub enum Literal {
     Char(CharLiteral),
@@ -100,7 +100,7 @@ pub struct CharLiteral {
     pub value: u8,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum StringLiteralPrefix {
     U8,
     LCU,
@@ -108,13 +108,13 @@ pub enum StringLiteralPrefix {
     L,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct StringLiteral {
     pub prefix: Option<StringLiteralPrefix>,
     pub value: String,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum IntegerSuffix {
     U,
     L,
@@ -123,33 +123,33 @@ pub enum IntegerSuffix {
     ULL,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum FloatLiteralPrefix {
     F,
     L
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct FloatLiteral {
     pub prefix: FloatLiteralPrefix,
     // pub value: f64, TODO: !!!! 
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum IntegerLiteralRepresentationKind {
     DecimalConstant,
     OctalConstant,
     HexadecimalConstant,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct IntegerLiteral {
     pub suffix: Option<IntegerSuffix>, 
     pub representation_kind: IntegerLiteralRepresentationKind,
     pub value: u64, 
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 // An expression that has an unary operator with an operand. Example: +1, !(true && false).
 pub struct OneOperandExpr {
     pub op: UnaryOp,
@@ -161,7 +161,7 @@ impl OneOperandExpr {
         Expression::OneOperand(Box::new(Self{op: UnaryOp::Increment, value}))
     }
 
-    pub fn decrement(value: Expression) -> Expression {
+    pub fn new_decrement(value: Expression) -> Expression {
         Expression::OneOperand(Box::new(Self{op: UnaryOp::Decrement, value}))
     }
 
@@ -174,7 +174,7 @@ impl OneOperandExpr {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum UnaryOp {
     // &x
     Address,
@@ -200,7 +200,7 @@ pub enum UnaryOp {
     Postdecrement,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 // An expression that has a binary operator with two operands. Example: 1 < 12, 24 != (14 + 14).
 pub struct TwoOperandsExpr {
     pub lhs: Expression,
@@ -341,7 +341,7 @@ impl TwoOperandsExpr {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 // A tag that determines a binary operator type.
 pub enum BiTag {
     // = basic assignment
@@ -412,7 +412,7 @@ pub enum BiTag {
     PtrAccess,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 // Example: f(123, 321).
 pub struct CallExpr {
     pub callie: Expression,
