@@ -6,25 +6,26 @@ use crate::ast;
 /// That concept is similar to std::Path, when we provide 
 /// functionality by the wrapper over borrowing value of another type. 
 pub struct InspectStore<'ast> {
-    
-    corresponding_type: HashMap<&'ast ast::decl::VarDecl, ast::r#type::Type>,
+    // corresponding_type: HashMap<&'ast ast::decl::VarDecl, ast::r#type::Type>,
+    phantom: &'ast std::marker::PhantomData<u8>,
 }
 
 impl<'ast> InspectStore<'ast> {
     pub fn new() -> Self {
-        Self{corresponding_type: Default::default()}
+        // Self{corresponding_type: Default::default()}
+        todo!()
     }
-    pub fn get_type_size(&self, r#type: &'ast ast::r#type::Type) -> u32 {
-        unimplemented!()
-    }
-    pub fn get_corresponding_type(&self, decl: &ast::decl::VarDecl) -> &ast::r#type::Type {
-        // self.corresponding_type[decl]
-        unimplemented!()
-    }
+    // pub fn get_type_size(&self, r#type: &'ast ast::r#type::Type) -> u32 {
+    //     todo!()
+    // }
+    // pub fn get_corresponding_type(&self, decl: &ast::decl::VarDecl) -> &ast::r#type::Type {
+    //     // self.corresponding_type[decl]
+    //     todo!()
+    // }
 
-    pub fn get_fundefpar_type(&self, decl: &ast::decl::FuncDefParam) -> &ast::r#type::Type {
-        unimplemented!()
-    }
+    // pub fn get_fundefpar_type(&self, decl: &ast::decl::FuncDefParam) -> &ast::r#type::Type {
+    //     todo!()
+    // }
     // Context sensitive expressions (break, continue)
     // pub fn get_cfg_target() -> {
     // 

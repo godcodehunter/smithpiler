@@ -1,4 +1,13 @@
-use crate::{inspect_store::InspectStore, translator::{translate_type_cast, BaseTranslator, StatementTranslator, NOP_STUB, TranslatorStore}};
+use crate::{
+    inspect_store::InspectStore, 
+    translator::{
+        translate_type_cast, 
+        BaseTranslator, 
+        StatementTranslator, 
+        NOP_STUB, 
+        TranslatorStore
+    }
+};
 use std::{default::Default, convert::TryInto};
 extern crate llvm_sys as llvm;
 use crate::ast;
@@ -227,7 +236,6 @@ impl<'a> ExpressionTranslator<'a> {
             (val, ty)
         }
     }
-
     fn translate_division(&self, lhs: llvm::prelude::LLVMValueRef, rhs: llvm::prelude::LLVMValueRef, ty: ast::r#type::Type) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
         todo!()
     }
@@ -373,6 +381,10 @@ impl<'a> ExpressionTranslator<'a> {
         }
     }
 
+    fn translate_variable() {
+        // llvm::core::LLVMBuildAlloca(builder, type_ref, b"test2\0".as_ptr() as _);
+    }
+
     fn translate_expression_tree(&mut self, expr: &'a ast::expr::Expression) -> (llvm::prelude::LLVMValueRef, ast::r#type::Type) {
         todo!()
     //     unsafe { 
@@ -500,5 +512,15 @@ impl<'a> ExpressionTranslator<'a> {
     //             }
     //         }
     //     }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_name() {
+        
     }
 }

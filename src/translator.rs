@@ -1,6 +1,5 @@
 extern crate llvm_sys as llvm;
 extern crate libc;
-use log::info;
 use crate::{inspect_store::InspectStore, ast, ast::TranslationUnit, expression_translator::ExpressionTranslator};
 use ast::r#type::Type;
 use std::{collections::HashMap, convert::TryInto};
@@ -23,104 +22,105 @@ pub trait BaseTranslator {
 /// * `associate` - values type
 /// * `target` - target type to which the conversion will be performed
 pub fn translate_type_cast<T: BaseTranslator>(translator: &T, value: llvm::prelude::LLVMValueRef, associate: &ast::r#type::Type, target: &ast::r#type::Type) -> llvm::prelude::LLVMValueRef {
-    use crate::ast::r#type::Fundamental;
+    // use crate::ast::r#type::Fundamental;
 
-    if associate == target {
-        return value;
-    }
+    // if associate == target {
+    //     return value;
+    // }
 
-    fn widening_cast(associate: &ast::r#type::Fundamental, target: &ast::r#type::Fundamental) -> InstBuildFunc {
-        match (associate, target) {
-            (Fundamental::SignedInteger(_), Fundamental::SignedInteger(_)) => {
-                return llvm::core::LLVMBuildSExt;
-            },
-            (Fundamental::SignedInteger(_), Fundamental::UnsignedInteger(_)) => {
-                info!(target: "codegen", "discovered unsafe conversion");
-                return llvm::core::LLVMBuildZExt; 
-            },
-            (Fundamental::SignedInteger(_), Fundamental::Floating(_)) => {
-                info!(target: "codegen", "discovered unsafe conversion");
-                return llvm::core::LLVMBuildSIToFP;
-            },
-            (Fundamental::UnsignedInteger(_), Fundamental::UnsignedInteger(_)) => {
-                return llvm::core::LLVMBuildZExt;
-            },
-            (Fundamental::UnsignedInteger(_), Fundamental::SignedInteger(_)) => {
-                return llvm::core::LLVMBuildZExt;
-            },
-            (Fundamental::UnsignedInteger(_), Fundamental::Floating(_)) => {
-                info!(target: "codegen", "discovered unsafe conversion");
-                return llvm::core::LLVMBuildUIToFP;
-            },
-            (Fundamental::Floating(_), Fundamental::Floating(_)) => {
-                return llvm::core::LLVMBuildFPExt;
-            },
-            (Fundamental::Floating(_), Fundamental::SignedInteger(_)) => {
-                info!(target: "codegen", "discovered unsafe conversion");
-                return llvm::core::LLVMBuildFPToSI;
-            },
-            (Fundamental::Floating(_), Fundamental::UnsignedInteger(_)) => {
-                info!(target: "codegen", "discovered unsafe conversion");
-                return llvm::core::LLVMBuildFPToUI;
-            },
-            (Fundamental::Bool, _) => {
-                return llvm::core::LLVMBuildZExt;
-            },
-            _ => unreachable!()
-        }
-    }
+    // fn widening_cast(associate: &ast::r#type::Fundamental, target: &ast::r#type::Fundamental) -> InstBuildFunc {
+    //     match (associate, target) {
+    //         (Fundamental::SignedInteger(_), Fundamental::SignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildSExt;
+    //         },
+    //         (Fundamental::SignedInteger(_), Fundamental::UnsignedInteger(_)) => {
+    //             info!(target: "codegen", "discovered unsafe conversion");
+    //             return llvm::core::LLVMBuildZExt; 
+    //         },
+    //         (Fundamental::SignedInteger(_), Fundamental::Floating(_)) => {
+    //             info!(target: "codegen", "discovered unsafe conversion");
+    //             return llvm::core::LLVMBuildSIToFP;
+    //         },
+    //         (Fundamental::UnsignedInteger(_), Fundamental::UnsignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildZExt;
+    //         },
+    //         (Fundamental::UnsignedInteger(_), Fundamental::SignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildZExt;
+    //         },
+    //         (Fundamental::UnsignedInteger(_), Fundamental::Floating(_)) => {
+    //             info!(target: "codegen", "discovered unsafe conversion");
+    //             return llvm::core::LLVMBuildUIToFP;
+    //         },
+    //         (Fundamental::Floating(_), Fundamental::Floating(_)) => {
+    //             return llvm::core::LLVMBuildFPExt;
+    //         },
+    //         (Fundamental::Floating(_), Fundamental::SignedInteger(_)) => {
+    //             info!(target: "codegen", "discovered unsafe conversion");
+    //             return llvm::core::LLVMBuildFPToSI;
+    //         },
+    //         (Fundamental::Floating(_), Fundamental::UnsignedInteger(_)) => {
+    //             info!(target: "codegen", "discovered unsafe conversion");
+    //             return llvm::core::LLVMBuildFPToUI;
+    //         },
+    //         (Fundamental::Bool, _) => {
+    //             return llvm::core::LLVMBuildZExt;
+    //         },
+    //         _ => unreachable!()
+    //     }
+    // }
 
-    fn narrowing_cast(associate: &ast::r#type::Fundamental, target: &ast::r#type::Fundamental) -> InstBuildFunc {
-        info!(target: "codegen", "discovered narrowing conversion");
-        match (associate, target) {
-            (_, Fundamental::Bool) => {
-                todo!()
-            },
-            (Fundamental::SignedInteger(_), Fundamental::SignedInteger(_)) => {
-                return llvm::core::LLVMBuildTrunc;
-            },
-            (Fundamental::SignedInteger(_), Fundamental::UnsignedInteger(_)) => {
-                return llvm::core::LLVMBuildTrunc;
-            },
-            (Fundamental::SignedInteger(_), Fundamental::Floating(_)) => {
-                return llvm::core::LLVMBuildSIToFP;
-            },
-            (Fundamental::UnsignedInteger(_), Fundamental::UnsignedInteger(_)) => { 
-                return llvm::core::LLVMBuildTrunc;
-            },
-            (Fundamental::UnsignedInteger(_), Fundamental::SignedInteger(_)) => {
-                return llvm::core::LLVMBuildTrunc;
-            },
-            (Fundamental::UnsignedInteger(_), Fundamental::Floating(_)) => {
-                return llvm::core::LLVMBuildUIToFP;
-            },
-            (Fundamental::Floating(_), Fundamental::Floating(_)) => {
-                return llvm::core::LLVMBuildFPTrunc;
-            },
-            (Fundamental::Floating(_), Fundamental::SignedInteger(_)) => {
-                return llvm::core::LLVMBuildFPToSI;
-            },
-            (Fundamental::Floating(_), Fundamental::UnsignedInteger(_)) => {
-                return llvm::core::LLVMBuildFPToUI;
-            },
-            _ => unreachable!()
-        }
-    }
+    // fn narrowing_cast(associate: &ast::r#type::Fundamental, target: &ast::r#type::Fundamental) -> InstBuildFunc {
+    //     info!(target: "codegen", "discovered narrowing conversion");
+    //     match (associate, target) {
+    //         (_, Fundamental::Bool) => {
+    //             todo!()
+    //         },
+    //         (Fundamental::SignedInteger(_), Fundamental::SignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildTrunc;
+    //         },
+    //         (Fundamental::SignedInteger(_), Fundamental::UnsignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildTrunc;
+    //         },
+    //         (Fundamental::SignedInteger(_), Fundamental::Floating(_)) => {
+    //             return llvm::core::LLVMBuildSIToFP;
+    //         },
+    //         (Fundamental::UnsignedInteger(_), Fundamental::UnsignedInteger(_)) => { 
+    //             return llvm::core::LLVMBuildTrunc;
+    //         },
+    //         (Fundamental::UnsignedInteger(_), Fundamental::SignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildTrunc;
+    //         },
+    //         (Fundamental::UnsignedInteger(_), Fundamental::Floating(_)) => {
+    //             return llvm::core::LLVMBuildUIToFP;
+    //         },
+    //         (Fundamental::Floating(_), Fundamental::Floating(_)) => {
+    //             return llvm::core::LLVMBuildFPTrunc;
+    //         },
+    //         (Fundamental::Floating(_), Fundamental::SignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildFPToSI;
+    //         },
+    //         (Fundamental::Floating(_), Fundamental::UnsignedInteger(_)) => {
+    //             return llvm::core::LLVMBuildFPToUI;
+    //         },
+    //         _ => unreachable!()
+    //     }
+    // }
 
-    let is_narrowing = translator.inspect_store().get_type_size(associate) > translator.inspect_store().get_type_size(target);
+    // let is_narrowing = translator.inspect_store().get_type_size(associate) > translator.inspect_store().get_type_size(target);
 
-    let conversion = match (associate, target) {
-        (Type::Fundamental(lhs), Type::Fundamental(rhs)) if !is_narrowing => widening_cast(lhs, rhs),
-        (Type::Fundamental(lhs), Type::Fundamental(rhs)) if is_narrowing => narrowing_cast(lhs, rhs),
-        _ => {
-            info!(target: "codegen", "discovered unsafe conversion");
-            llvm::core::LLVMBuildBitCast
-        }
-    };
+    // let conversion = match (associate, target) {
+    //     (Type::Fundamental(lhs), Type::Fundamental(rhs)) if !is_narrowing => widening_cast(lhs, rhs),
+    //     (Type::Fundamental(lhs), Type::Fundamental(rhs)) if is_narrowing => narrowing_cast(lhs, rhs),
+    //     _ => {
+    //         info!(target: "codegen", "discovered unsafe conversion");
+    //         llvm::core::LLVMBuildBitCast
+    //     }
+    // };
 
-    unsafe {
-        conversion(translator.builder(), value, translator.translator_store().get_generated(target), NOP_STUB)
-    }
+    // unsafe {
+    //     conversion(translator.builder(), value, translator.translator_store().get_generated(target), NOP_STUB)
+    // }
+    todo!()
 }
 
 //TODO: temporary placeholder 
@@ -132,17 +132,17 @@ struct FuncEntry {
 
 pub struct TranslatorStore<'ast> {
     generated_types: HashMap<&'ast ast::r#type::Type, llvm::prelude::LLVMTypeRef>,
-    generate_values: HashMap<&'ast ast::decl::VarDecl, llvm::prelude::LLVMValueRef>,
+    // generate_values: HashMap<&'ast ast::decl::VarDecl, llvm::prelude::LLVMValueRef>,
     //TODO: функции могут быть в двух состояниях протранслированные, заготовки 
-    generated_functions: HashMap<&'ast ast::decl::FuncDef, llvm::prelude::LLVMTypeRef>,  
+    // generated_functions: HashMap<&'ast ast::decl::FuncDef, llvm::prelude::LLVMTypeRef>,  
 }
 
 impl<'ast> TranslatorStore<'ast> {
     fn new() -> Self {
         Self {
             generated_types: Default::default(),
-            generate_values: Default::default(), 
-            generated_functions: Default::default(),
+            // generate_values: Default::default(), 
+            // generated_functions: Default::default(),
         }
     }
 
@@ -211,77 +211,77 @@ impl<'ast> Translator<'ast> {
     }
  
     fn translate_type(&mut self, context: llvm::prelude::LLVMContextRef, r#type: &ast::r#type::Type) -> llvm::prelude::LLVMTypeRef {
-        let translate_fundamental = |r#type: &ast::r#type::Fundamental| -> llvm::prelude::LLVMTypeRef {
-            use ast::r#type::Fundamental::*;
-            match r#type {
-                SignedInteger(r#type) => {
-                    unsafe {
-                        match r#type {
-                            ast::r#type::SignedIntegerType::SignedChar => {
-                                llvm::core::LLVMInt8TypeInContext(context)
-                            },
-                            ast::r#type::SignedIntegerType::ShortInt => {
-                                llvm::core::LLVMInt16TypeInContext(context)
-                            },
-                            ast::r#type::SignedIntegerType::Int => {
-                                llvm::core::LLVMInt32TypeInContext(context)
-                            },
-                            ast::r#type::SignedIntegerType::LongInt => {
-                                llvm::core::LLVMInt64TypeInContext(context)
-                            },
-                            ast::r#type::SignedIntegerType::LongLongInt => {
-                                llvm::core::LLVMInt128TypeInContext(context)
-                            },
-                        }
-                    }
-                },
-                UnsignedInteger(r#type) => {
-                    unsafe {
-                        match r#type {
-                            ast::r#type::UnsignedIntegerType::UnsignedChar => {
-                                llvm::core::LLVMInt8TypeInContext(context)
-                            },
-                            ast::r#type::UnsignedIntegerType::UnsignedShort => {
-                                llvm::core::LLVMInt16TypeInContext(context)
-                            },
-                            ast::r#type::UnsignedIntegerType::UnsignedInt => {
-                                llvm::core::LLVMInt32TypeInContext(context)
-                            },
-                            ast::r#type::UnsignedIntegerType::UnsignedLong => {
-                                llvm::core::LLVMInt64TypeInContext(context)
-                            },
-                            ast::r#type::UnsignedIntegerType::UnsignedLongLong => {
-                                llvm::core::LLVMInt128TypeInContext(context)
-                            }   
-                        }
-                    }
-                },
-                Floating(r#type) => {
-                    unsafe {
-                        match r#type {
-                            Float => {
-                                llvm::core::LLVMFloatTypeInContext(context)
-                            },
-                            Double => {
-                                llvm::core::LLVMDoubleTypeInContext(context)
-                            },
-                            LongDouble => {
-                                llvm::core::LLVMX86FP80TypeInContext(context)
-                            }
-                        }
-                    }
-                },
-                Void => {
-                    unsafe { llvm::core::LLVMVoidTypeInContext(context) }
-                },
-                Bool => {
-                    unsafe { llvm::core::LLVMInt1TypeInContext(context) }
-                },
-            }
-        };
+        // let translate_fundamental = |r#type: &ast::r#type::Fundamental| -> llvm::prelude::LLVMTypeRef {
+        //     use ast::r#type::Fundamental::*;
+        //     match r#type {
+        //         SignedInteger(r#type) => {
+        //             unsafe {
+        //                 match r#type {
+        //                     ast::r#type::SignedIntegerType::SignedChar => {
+        //                         llvm::core::LLVMInt8TypeInContext(context)
+        //                     },
+        //                     ast::r#type::SignedIntegerType::ShortInt => {
+        //                         llvm::core::LLVMInt16TypeInContext(context)
+        //                     },
+        //                     ast::r#type::SignedIntegerType::Int => {
+        //                         llvm::core::LLVMInt32TypeInContext(context)
+        //                     },
+        //                     ast::r#type::SignedIntegerType::LongInt => {
+        //                         llvm::core::LLVMInt64TypeInContext(context)
+        //                     },
+        //                     ast::r#type::SignedIntegerType::LongLongInt => {
+        //                         llvm::core::LLVMInt128TypeInContext(context)
+        //                     },
+        //                 }
+        //             }
+        //         },
+        //         UnsignedInteger(r#type) => {
+        //             unsafe {
+        //                 match r#type {
+        //                     ast::r#type::UnsignedIntegerType::UnsignedChar => {
+        //                         llvm::core::LLVMInt8TypeInContext(context)
+        //                     },
+        //                     ast::r#type::UnsignedIntegerType::UnsignedShort => {
+        //                         llvm::core::LLVMInt16TypeInContext(context)
+        //                     },
+        //                     ast::r#type::UnsignedIntegerType::UnsignedInt => {
+        //                         llvm::core::LLVMInt32TypeInContext(context)
+        //                     },
+        //                     ast::r#type::UnsignedIntegerType::UnsignedLong => {
+        //                         llvm::core::LLVMInt64TypeInContext(context)
+        //                     },
+        //                     ast::r#type::UnsignedIntegerType::UnsignedLongLong => {
+        //                         llvm::core::LLVMInt128TypeInContext(context)
+        //                     }   
+        //                 }
+        //             }
+        //         },
+        //         Floating(r#type) => {
+        //             unsafe {
+        //                 match r#type {
+        //                     Float => {
+        //                         llvm::core::LLVMFloatTypeInContext(context)
+        //                     },
+        //                     Double => {
+        //                         llvm::core::LLVMDoubleTypeInContext(context)
+        //                     },
+        //                     LongDouble => {
+        //                         llvm::core::LLVMX86FP80TypeInContext(context)
+        //                     }
+        //                 }
+        //             }
+        //         },
+        //         Void => {
+        //             unsafe { llvm::core::LLVMVoidTypeInContext(context) }
+        //         },
+        //         Bool => {
+        //             unsafe { llvm::core::LLVMInt1TypeInContext(context) }
+        //         },
+        //     }
+        // };
 
-        let translate_derived = |ty: &ast::r#type::DerivedType| -> llvm::prelude::LLVMTypeRef { 
-            unimplemented!()
+        // let translate_derived = |ty: &ast::r#type::DerivedType| -> llvm::prelude::LLVMTypeRef { 
+            // unimplemented!()
             // use ast::r#type::DerivedType::*;
             // match ty {
             //     Array(ty) => {
@@ -306,19 +306,20 @@ impl<'ast> Translator<'ast> {
             //         unsafe { llvm::core::LLVMPointerType(elem_type, 0) }
             //     }
             // }
-        };
+        // };
 
-        let translate_enumerated = | ty: &ast::r#type::EnumeratedType | -> llvm::prelude::LLVMTypeRef {
-            let bitsize = self.inspect_store().get_type_size(&Type::Enumerated(ty.to_owned())); 
-            unsafe { llvm::core::LLVMIntTypeInContext(self.context, bitsize) }
-        };
+        // let translate_enumerated = | ty: &ast::r#type::EnumeratedType | -> llvm::prelude::LLVMTypeRef {
+        //     let bitsize = self.inspect_store().get_type_size(&Type::Enumerated(ty.to_owned())); 
+        //     unsafe { llvm::core::LLVMIntTypeInContext(self.context, bitsize) }
+        // };
 
-        use ast::r#type::Type::*;
-        match r#type {
-            Type::Fundamental(fundamental) => translate_fundamental(fundamental),
-            Type::Enumerated(enumerated) => translate_enumerated(enumerated),
-            Type::Derived(derived) => translate_derived(derived),
-        }
+        // use ast::r#type::Type::*;
+        // match r#type {
+        //     Type::Fundamental(fundamental) => translate_fundamental(fundamental),
+        //     Type::Enumerated(enumerated) => translate_enumerated(enumerated),
+        //     Type::Derived(derived) => translate_derived(derived),
+        // }
+        todo!()
     }
 
     fn construct_type_build_query(&mut self) {
@@ -350,27 +351,27 @@ impl<'ast> Translator<'ast> {
     
     // Function entry can be referenced, before we actually generate function body  
     // For example, when we generate function call
-    fn create_function_entry(&self, decl: &ast::decl::FuncDef) {
-        info!(target: "codegen", "create function entry");
+    // fn create_function_entry(&self, decl: &ast::decl::FuncDef) {
+    //     info!(target: "codegen", "create function entry");
 
-        let mut params = decl.params.iter().map(|param| {
-            let param_type = self.inspect_store().get_fundefpar_type(param);
-            self.translator_store().get_generated(param_type)
-        }).collect::<Vec<_>>();
-        unsafe {
-            let func_type = llvm::core::LLVMFunctionType(
-                self.translator_store().get_generated(decl.return_ty.as_ref()),
-                params.as_mut_ptr(),
-                decl.params.len().try_into().expect("internal error"),
-                false as _,
-            );
-            let function = llvm::core::LLVMAddFunction(
-                self.module, 
-                decl.func_name.as_ptr() as _, 
-                func_type
-            );
-        }
-    }
+    //     let mut params = decl.params.iter().map(|param| {
+    //         let param_type = self.inspect_store().get_fundefpar_type(param);
+    //         self.translator_store().get_generated(param_type)
+    //     }).collect::<Vec<_>>();
+    //     unsafe {
+    //         let func_type = llvm::core::LLVMFunctionType(
+    //             self.translator_store().get_generated(decl.return_ty.as_ref()),
+    //             params.as_mut_ptr(),
+    //             decl.params.len().try_into().expect("internal error"),
+    //             false as _,
+    //         );
+    //         let function = llvm::core::LLVMAddFunction(
+    //             self.module, 
+    //             decl.func_name.as_ptr() as _, 
+    //             func_type
+    //         );
+    //     }
+    // }
 
     fn translate_function(&self, func: llvm::prelude::LLVMValueRef) {
         unsafe {
@@ -385,21 +386,22 @@ impl<'ast> Translator<'ast> {
         }
     }
 
-    pub fn translate(&mut self, unit: TranslationUnit) -> llvm::prelude::LLVMModuleRef {
-        for decl in unit.decls.0 {
-            // match decl {
-            //     ast::decl::Decl::Func(fn_decl) => {
-            //         match fn_decl {
-            //             ast::decl::FuncDecl::Def(func) => {
-            //                 self.create_function_entry(&func);
-            //             }
-            //             ast::decl::FuncDecl::Prototype(_) => { todo!() }
-            //         }
-            //     }
-            //     ast::decl::Decl::Var(_) => { todo!() }
-            // }
-        }
-        self.module
+    pub fn translate(&mut self, unit: &TranslationUnit) -> llvm::prelude::LLVMModuleRef {
+        // for decl in unit.decls.0 {
+        //     // match decl {
+        //     //     ast::decl::Decl::Func(fn_decl) => {
+        //     //         match fn_decl {
+        //     //             ast::decl::FuncDecl::Def(func) => {
+        //     //                 self.create_function_entry(&func);
+        //     //             }
+        //     //             ast::decl::FuncDecl::Prototype(_) => { todo!() }
+        //     //         }
+        //     //     }
+        //     //     ast::decl::Decl::Var(_) => { todo!() }
+        //     // }
+        // }
+        // self.module
+        todo!()
     }
 }
 
@@ -479,50 +481,53 @@ impl<'a> StatementTranslator<'a> {
     }
 
     fn generate_while(&mut self, stmt: &'a ast::stmt::WhileStmt) {
-        unsafe {
-            let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-            let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-            let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        // unsafe {
+        //     let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        //     let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
 
-            llvm::core::LLVMBuildBr(self.builder(), predicate_block);
-            llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
-            let predicate = self.expr_trans.translate(stmt.predicate.as_ref());
-            llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
+        //     llvm::core::LLVMBuildBr(self.builder(), predicate_block);
+        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
+        //     let predicate = self.expr_trans.translate(stmt.predicate.as_ref());
+        //     llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
             
-            llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-            self.translate(stmt.body.as_ref());
-            llvm::core::LLVMBuildBr(self.builder(), predicate_block);
-        }
+        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
+        //     self.translate(stmt.body.as_ref());
+        //     llvm::core::LLVMBuildBr(self.builder(), predicate_block);
+        // }
+        todo!()
     }
 
     fn generate_dowhile(&mut self, stmt: &'a ast::stmt::DoWhileStmt) {
-        unsafe {
-            let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-            let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        // unsafe {
+        //     let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
 
-            llvm::core::LLVMBuildBr(self.builder(), body_block);
-            llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-            self.translate(stmt.body.as_ref());
-            let predicate = self.expr_trans.translate(stmt.predicate.as_ref());  
-            llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
-        }
+        //     llvm::core::LLVMBuildBr(self.builder(), body_block);
+        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
+        //     self.translate(stmt.body.as_ref());
+        //     let predicate = self.expr_trans.translate(stmt.predicate.as_ref());  
+        //     llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
+        // }
+        todo!()
     }
 
     fn generate_for(&mut self, stmt: &'a ast::stmt::ForStmt) {
-        unsafe {
-            let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-            let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-            let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        // unsafe {
+        //     let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        //     let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
 
-            // self.expr_trans.translate(stmt.init.as_ref());                
-            // llvm::core::LLVMBuildBr(self.builder(), predicate_block);  
-            // llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
-            // let predicate = self.expr_trans.translate(stmt.predicate.as_ref());
-            // llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
-            // llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-            // self.translate(stmt.body.as_ref());    
-            // self.expr_trans.translate(stmt.step.as_ref());
-        }
+        //     self.expr_trans.translate(stmt.init.as_ref());                
+        //     llvm::core::LLVMBuildBr(self.builder(), predicate_block);  
+        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
+        //     let predicate = self.expr_trans.translate(stmt.predicate.as_ref());
+        //     llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
+        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
+        //     self.translate(stmt.body.as_ref());    
+        //     self.expr_trans.translate(stmt.step.as_ref());
+        // }
+        todo!()
     }
 
     // TODO TODO TODO: неверно работает, так же добавить - default block, проваливание 
@@ -565,47 +570,47 @@ impl<'a> StatementTranslator<'a> {
 
     // TODO: comment - Tail block 
     fn translate(&mut self, stmt: &'a ast::stmt::Statement) {
-        unsafe {
-            match stmt {
-                ast::stmt::Statement::Compound(stmt) => {
-                    stmt.0.iter().map(|expr| self.translate(&expr));
-                }
-                ast::stmt::Statement::IfElse(stmt) => {
-                    self.generate_brunch(stmt.predicate.as_ref(), stmt.first_stmt.as_ref(), Some(stmt.second_stmt.as_ref()));
-                }
-                ast::stmt::Statement::If(stmt) => {
-                    self.generate_brunch(stmt.predicate.as_ref(), stmt.first_stmt.as_ref(), None);
-                }
-                ast::stmt::Statement::Return(stmt) => {
-                    // let value = self.expr_trans.translate(stmt.value.as_ref());
-                    // llvm::core::LLVMBuildRet(self.builder(), value);
-                }
-                ast::stmt::Statement::While(stmt) => {
-                    self.generate_while(stmt);
-                }
-                ast::stmt::Statement::DoWhile(stmt) => {
-                    self.generate_dowhile(stmt);
-                }
-                ast::stmt::Statement::For(stmt) => {
-                    self.generate_for(stmt);
-                }
-                ast::stmt::Statement::Switch(stmt) => {
-                    self.generate_switch(stmt);
-                }
-                ast::stmt::Statement::Break => { 
-                    //TODO: for, while or do-while switch 
-                    todo!() 
-                }
-                ast::stmt::Statement::Continue => { 
-                    //TODO: for, while or do-while
-                    todo!() 
-                }
-                ast::stmt::Statement::Expression(expr) => {
-                    // self.expr_trans.translate(expr);
-                    todo!()
-                }
-                ast::stmt::Statement::Goto(_) => {}
-            }   
-        }
+        // unsafe {
+        //     match stmt {
+        //         ast::stmt::Statement::Compound(stmt) => {
+        //             stmt.0.iter().map(|expr| self.translate(&expr));
+        //         }
+        //         ast::stmt::Statement::IfElse(stmt) => {
+        //             self.generate_brunch(stmt.predicate.as_ref(), stmt.first_stmt.as_ref(), Some(stmt.second_stmt.as_ref()));
+        //         }
+        //         ast::stmt::Statement::If(stmt) => {
+        //             self.generate_brunch(stmt.predicate.as_ref(), stmt.first_stmt.as_ref(), None);
+        //         }
+        //         ast::stmt::Statement::Return(stmt) => {
+        //             // let value = self.expr_trans.translate(stmt.value.as_ref());
+        //             // llvm::core::LLVMBuildRet(self.builder(), value);
+        //         }
+        //         ast::stmt::Statement::While(stmt) => {
+        //             self.generate_while(stmt);
+        //         }
+        //         ast::stmt::Statement::DoWhile(stmt) => {
+        //             self.generate_dowhile(stmt);
+        //         }
+        //         ast::stmt::Statement::For(stmt) => {
+        //             self.generate_for(stmt);
+        //         }
+        //         ast::stmt::Statement::Switch(stmt) => {
+        //             self.generate_switch(stmt);
+        //         }
+        //         ast::stmt::Statement::Break => { 
+        //             //TODO: for, while or do-while switch 
+        //             todo!() 
+        //         }
+        //         ast::stmt::Statement::Continue => { 
+        //             //TODO: for, while or do-while
+        //             todo!() 
+        //         }
+        //         ast::stmt::Statement::Expression(expr) => {
+        //             // self.expr_trans.translate(expr);
+        //             todo!()
+        //         }
+        //         ast::stmt::Statement::Goto(_) => {}
+        //     }   
+        // }
     }
 }

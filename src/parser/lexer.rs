@@ -1,7 +1,7 @@
 use sana::{Spanned, Sana, Lexer};
 use super::parser::ParserError;
 
-#[derive(Debug, Clone, Copy, PartialEq, Sana)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Sana)]
 pub enum Token {
     #[token("auto", priority = 1)]
     Auto,

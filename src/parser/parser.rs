@@ -2,7 +2,7 @@ use super::lexer;
 use crate::ast::{expr, stmt, decl, self, r#type};
 pub use super::public_parser::*;
 use std::collections::VecDeque;
-
+use std::collections::HashMap;
 
 #[derive(Debug, Copy, Clone)]
 pub enum LexerResult {
@@ -30,12 +30,6 @@ pub enum ParserError {
     MatchOrError(MatchOrError),
     MatchAlternativeError(Vec<ParserError>),
 }
-
-// impl std::fmt::Display for ParserError {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.write_fmt(format_args!("Unrecognizable token encountered: {}", self.0))
-//     }
-// }
 
 pub type ParseResult<T> = Result<T, ParserError>;
 pub trait ParseFunction<'input, T> = Fn(&mut ParseState<'input>)->ParseResult<T>;
@@ -88,6 +82,8 @@ impl<'input> ParseState<'input> {
         result.ok()
     }
 
+    /// Try call provided call function one by one until parse result unsuccess.
+    /// After all call unsuccess call rollback token stream
     fn parse_any<T: std::fmt::Debug>(&mut self, alternatives: &[Box<dyn ParseFunction<'input, T>>]) -> ParseResult<T> {
         let mut errors = Vec::<ParserError>::new();
         for alternative in alternatives {
@@ -147,9 +143,9 @@ fn parse_string_literal(parser: &mut ParseState) -> ParseResult<String> {
 
 // External Definitions Rules
 
-fn parse_translation_unit(parser: &mut ParseState) -> ParseResult<ast::Ast> {
-    let external_declarations = parser.expect_zero_or_n(parse_external_declaration);
-    Ok(ast::Ast(external_declarations))
+pub (crate) fn parse_translation_unit(parser: &mut ParseState) -> ParseResult<Vec<ast::ExternalDeclaration>> {
+    // parser.expect_zero_or_n(parse_external_declaration)
+    todo!()
 }
 
 fn parse_external_declaration(parser: &mut ParseState) -> ParseResult<ast::ExternalDeclaration> {
@@ -246,173 +242,252 @@ fn parse_init_declarator(parser: &mut ParseState) -> ParseResult<decl::InitDecla
 }
 
 fn parse_storage_class_specifier(parser: &mut ParseState) -> ParseResult<decl::StorageClassSpecifier> {
-//     let token = iter.next(); 
-//     if token.is_none() {
-//         return Err(ParserError);
-//     }
-
-//     match token.unwrap().unwrap().1 {
-//         lexer::Token::Typedef => Ok(decl::StorageClassSpecifier::Typedef),
-//         lexer::Token::Extern => Ok(decl::StorageClassSpecifier::Extern),
-//         lexer::Token::Static => Ok(decl::StorageClassSpecifier::Static),
-//         lexer::Token::ThreadLocal => Ok(decl::StorageClassSpecifier::ThreadLocal),
-//         lexer::Token::Auto => Ok(decl::StorageClassSpecifier::Auto),
-//         lexer::Token::Register => Ok(decl::StorageClassSpecifier::Register),
-//         _ => Err(ParserError),
-//     }
-    todo!()
+    parser.next();
+    use lexer::Token::*;
+    match parser.iter.current_item.unwrap().value {
+        Typedef => Ok(decl::StorageClassSpecifier::Typedef),
+        Extern => Ok(decl::StorageClassSpecifier::Extern),
+        Static => Ok(decl::StorageClassSpecifier::Static),
+        ThreadLocal => Ok(decl::StorageClassSpecifier::ThreadLocal),
+        Auto => Ok(decl::StorageClassSpecifier::Auto),
+        Register => Ok(decl::StorageClassSpecifier::Register),
+        _ => Err(ParserError::MatchOrError(
+            MatchOrError{
+                expected: vec![
+                    Typedef,
+                    Extern,
+                    Static,
+                    ThreadLocal,
+                    Auto,
+                    Register,
+                ],
+                got: todo!(),
+            }
+        )
+    ),
+    }
 }
 
 fn parse_type_specifier(parser: &mut ParseState) -> ParseResult<decl::TypeSpecifier> {
-//     // let token = iter.next(); 
-//     // if token.is_none() {
-//     //     return None;
-//     // }
-
-//     // match token.unwrap().unwrap().1 {
-//     //     lexer::Token::Void => decl::TypeSpecifier::Void,
-//     //     lexer::Token::Char => decl::TypeSpecifier::Char,
-//     //     lexer::Token::Short => decl::TypeSpecifier::Short,
-//     //     lexer::Token::Int => decl::TypeSpecifier::Int,
-//     //     lexer::Token::Long => decl::TypeSpecifier::Long,
-//     //     lexer::Token::Float => decl::TypeSpecifier::Float,
-//     //     lexer::Token::Double => decl::TypeSpecifier::Double,
-//     //     lexer::Token::Signed => decl::TypeSpecifier::Signed,
-//     //     lexer::Token::Unsigned => decl::TypeSpecifier::Unsigned,
-//     //     lexer::Token::Bool => decl::TypeSpecifier::Bool,
-//     //     lexer::Token::Complex => decl::TypeSpecifier::Complex,
-//     //     _ => None,
-//     // }
-
-//     // let atomic_type_specifier = AtomicTypeSpecifier(iter);
-//     // return decl::TypeSpecifier::AtomicTypeSpecifier(atomic_type_specifier);
-//     // let struct_or_union_specifier = StructOrUnionSpecifier(iter);
-//     // return decl::TypeSpecifier::StructOrUnionSpecifier(struct_or_union_specifier);
-//     // let enum_specifier = EnumSpecifier(iter);
-//     // return decl::TypeSpecifier::EnumSpecifier(enum_specifier);
-//     // let typedef_name = TypedefName(iter);
-//     // return decl::TypeSpecifier::TypedefName(typedef_name);
-
-    todo!()
+    parser.parse_any(&[Box::new(|iter| {
+            iter.next();
+            use lexer::Token::*;
+            match iter.iter.current_item.unwrap().value {
+                Void => Ok(decl::TypeSpecifier::Void),
+                Char => Ok(decl::TypeSpecifier::Char),
+                Short => Ok(decl::TypeSpecifier::Short),
+                Int => Ok(decl::TypeSpecifier::Int),
+                Long => Ok(decl::TypeSpecifier::Long),
+                Float => Ok(decl::TypeSpecifier::Float),
+                Double =>  Ok(decl::TypeSpecifier::Double),
+                Signed =>  Ok(decl::TypeSpecifier::Signed),
+                Unsigned =>  Ok(decl::TypeSpecifier::Unsigned),
+                Bool =>  Ok(decl::TypeSpecifier::Bool),
+                Complex =>  Ok(decl::TypeSpecifier::Complex),
+                _ => Err(ParserError::MatchOrError(
+                        MatchOrError{
+                            expected: vec![
+                                Void,
+                                Char,
+                                Short,
+                                Int,
+                                Long,
+                                Float,
+                                Double,
+                                Signed,
+                                Unsigned,
+                                Bool,
+                                Complex,
+                            ],
+                            got: todo!(),
+                        }
+                    )
+                )
+            }
+        }),
+        Box::new(|iter| {
+            let atomic_type_specifier = parse_atomic_type_specifier(iter)?;
+            return Ok(decl::TypeSpecifier::AtomicTypeSpecifier(atomic_type_specifier));
+        }),
+        Box::new(|iter| { 
+            let struct_or_union_specifier = parse_struct_or_union_specifier(iter)?;
+            return Ok(decl::TypeSpecifier::StructOrUnionSpecifier(struct_or_union_specifier));
+        }),
+        Box::new(|iter|{ 
+            let enum_specifier = parse_enum_specifier(iter)?;
+            return Ok(decl::TypeSpecifier::EnumSpecifier(enum_specifier));
+        }),
+        Box::new(|iter| { 
+            let typedef_name = parse_typedef_name(iter)?;
+            return Ok(decl::TypeSpecifier::TypedefName(typedef_name));
+        })
+    ])
 }
 
 fn parse_struct_or_union_specifier(parser: &mut ParseState) -> ParseResult<decl::StructOrUnionSpecifier> {
-//     // StructOrUnion(); 
-//     // Identifier(); 
-//     // expect_token(iter, lexer::Token::LBrace); 
-//     // StructDeclarationList(); 
-//     // expect_token(iter, lexer::Token::RBrace);
-    
-//     // StructOrUnion(); 
-//     // Identifier();
-    todo!()
+    parser.parse_any(&[
+        Box::new(|iter| {
+            parse_struct_or_union(iter); 
+            parse_identifier(iter); 
+            iter.match_token(lexer::Token::LBrace)?;
+            parse_struct_declaration_list(iter); 
+            iter.match_token(lexer::Token::RBrace)?;
+            todo!()
+        }),
+        Box::new(|iter| {
+            parse_struct_or_union(iter); 
+            parse_identifier(iter);
+            todo!()
+        })
+    ])
 }
 
 fn parse_struct_or_union(parser: &mut ParseState) -> ParseResult<decl::ObjKind> {
-//     // let token = iter.next(); 
-//     // if token.is_none() {
-//     //     return None;
-//     // }
-
-//     // match token.unwrap() {
-//     //     lexer::Token::Struct => decl::ObjKind::Struct,
-//     //     lexer::Token::Union => decl::ObjKind::Union,
-//     //     _ => None,
-//     // }
-    todo!()
+    parser.next();
+    use lexer::Token::*;
+    match parser.iter.current_item.unwrap().value {
+        Struct => Ok(decl::ObjKind::Struct),
+        Union => Ok(decl::ObjKind::Union),
+        _ => Err(ParserError::MatchOrError(
+            MatchOrError{
+                expected: vec![
+                    Struct,
+                    Union,
+                ],
+                got: todo!(),
+            }
+        )
+    ),
+    }
 }
 
 fn parse_struct_declaration_list(parser: &mut ParseState) -> ParseResult<Vec<decl::StructDeclarator>> {
-//     // StructDeclaration+
+    // parser.expect_one_or_n(parse_struct_declaration)
     todo!()
 }
 
 fn parse_struct_declaration(parser: &mut ParseState) -> ParseResult<decl::StructDeclaration> {
-//     // let qualifier = SpecifierQualifierList(iter); 
-//     // let declarator = StructDeclaratorList(iter); 
-//     // expect_token(iter, lexer::Token::Semicolon);
-//     // return decl::StructDeclaration::Field(decl::Filed{qualifier, declarator});
-    
-//     // let static_assert_declaration = StaticAssertDeclaration();
-//     // return decl::StructDeclaration::StaticAssert(static_assert_declaration);
-    todo!()
+    parser.parse_any(&[
+        Box::new(|iter| {
+            let qualifier = parse_specifier_qualifier_list(iter)?; 
+            let declarator = parse_struct_declarator_list(iter)?; 
+            iter.match_token(lexer::Token::Semicolon)?;
+            Ok(decl::StructDeclaration::Field(decl::Filed{qualifier, declarator}))
+        }),
+        Box::new(|iter| {
+            let static_assert_declaration = parse_static_assert_declaration(iter)?;
+            Ok(decl::StructDeclaration::StaticAssert(static_assert_declaration))
+        })
+    ])
 }
 
-fn parse_specifier_qualifierList(parser: &mut ParseState) -> ParseResult<decl::SpecifierQualifierList> {
-//     // TypeSpecifier(); TypeQualifier();
+fn parse_specifier_qualifier_list(parser: &mut ParseState) -> ParseResult<decl::SpecifierQualifierList> {
+    parse_type_specifier(parser); 
+    parse_type_qualifier(parser);
     todo!()
 }
 
 fn parse_struct_declarator_list(parser: &mut ParseState) -> ParseResult<Vec<decl::StructDeclarator>> {
-//     // StructDeclarator(); <n: ("," StructDeclarator)*> 
-//     // => todo!() 
+    // parse_struct_declarator(parser);
+    // parser.expect_zero_or_n(|iter| {
+    //     parser.match_token(lexer::Token::Comma);
+    //     parse_struct_declarator(parser);
+    // })
     todo!()
 }
 
 fn parse_struct_declarator(parser: &mut ParseState) -> ParseResult<decl::StructDeclarator> {
-//     // Declarator => todo!(),
-//     // Declarator? ":" ConstantExpression;
-    todo!()
+    parser.parse_any(&[
+        Box::new(|iter| { 
+            parse_declarator(iter);
+            todo!()
+        }),
+        Box::new(|iter| {  
+            parse_declarator(iter);
+            iter.match_token(lexer::Token::Colon);
+            parse_constant_expression(iter); 
+            todo!()
+        })
+    ])
 }
 
 fn parse_enum_specifier(parser: &mut ParseState) -> ParseResult<decl::EnumSpecifier> {
-//     // "enum" Identifier? ("{" EnumeratorList ","? "}")?
-//     // => todo!()
+    parser.match_token(lexer::Token::Enum);
+    parse_identifier(parser)?;
+    parser.match_token(lexer::Token::LBrace);
+    // ("{" EnumeratorList ","? "}")?
+    parser.match_token(lexer::Token::Comma);
+    parser.match_token(lexer::Token::RBrace);
     todo!()
 }
 
 fn parse_enumerator_list(parser: &mut ParseState) -> ParseResult<decl::Enumerator> {
-//     // Enumerator <l: ("," Enumerator)*> 
-//     // => todo!()
+    // parse_enumerator() 
+    // ("," parse_enumerator())
     todo!()
 }
 
 fn parse_enumeration_constant(parser: &mut ParseState) -> ParseResult<String> {
-//     // Identifier()
+    // parse_identifier()
     todo!()
 }
 
 fn parse_enumerator(parser: &mut ParseState) -> ParseResult<decl::Enumerator> {
-//     // EnumerationConstant <c: ("=" ConstantExpression)?> 
-//     // => todo!()
-    todo!()
+    let identifier = parse_enumeration_constant(parser)?; 
+    parser.match_token(lexer::Token::Assign);
+    let expression = parse_constant_expression(parser)?; 
+    Ok(decl::Enumerator{identifier, expression})
 }
 
 fn parse_atomic_type_specifier(parser: &mut ParseState) -> ParseResult<decl::AtomicTypeSpecifier> {
-//     // "_Atomic" "(" <typename: TypeName> ")"
-//     // //AtomicTypeSpecifier{typename}
-//     // => todo!()
+    parser.match_token(lexer::Token::Atomic);
+    parser.match_token(lexer::Token::LParenthesis);
+    parse_type_name(parser);
+    parser.match_token(lexer::Token::RParenthesis);
+    // parse_atomic_type_Specifier{typename}
     todo!()
 }
 
 fn parse_type_qualifier(parser: &mut ParseState) -> ParseResult<decl::TypeQualifier> {
-//     // let token = iter.next(); 
-//     // if token.is_none() {
-//     //     return None;
-//     // }
-
-//     // match token.unwrap().unwrap().1 {
-//     //     lexer::Token::Const => decl::TypeQualifier::Const,
-//     //     lexer::Token::Restrict => decl::TypeQualifier::Restrict,
-//     //     lexer::Token::Volatile => decl::TypeQualifier::Volatile,
-//     //     lexer::Token::Atomic => decl::TypeQualifier::Atomic,
-//     //     _ => None,
-//     // }
-    todo!()
+    parser.next();
+    use lexer::Token::*;
+    match parser.iter.current_item.unwrap().value  {
+        Const => Ok(decl::TypeQualifier::Const),
+        Restrict => Ok(decl::TypeQualifier::Restrict),
+        Volatile => Ok(decl::TypeQualifier::Volatile),
+        Atomic => Ok(decl::TypeQualifier::Atomic),
+        _ => Err(ParserError::MatchOrError(
+                MatchOrError{
+                    expected: vec![
+                        Const,
+                        Restrict,
+                        Volatile,
+                        Atomic,
+                    ],
+                    got: todo!(),
+                }
+            )
+        )
+    }
 }
 
 fn parse_function_specifier(parser: &mut ParseState) -> ParseResult<decl::FunctionSpecifier> {
-//     // let token = iter.next(); 
-//     // if token.is_none() {
-//     //     return None;
-//     // }
-
-//     // match token.unwrap().unwrap().1 {
-//     //     lexer::Token::Inline => decl::FunctionSpecifier::Inline,
-//     //     lexer::Token::Noreturn => decl::FunctionSpecifier::Noreturn,
-//     //     _ => None,
-//     // }
-    todo!()
+    parser.next();
+    use lexer::Token::*;
+    match parser.iter.current_item.unwrap().value {
+        Inline => Ok(decl::FunctionSpecifier::Inline),
+        Noreturn => Ok(decl::FunctionSpecifier::Noreturn),
+        _ => Err(ParserError::MatchOrError(
+                MatchOrError{
+                    expected: vec![
+                        Inline,
+                        Noreturn,
+                    ],
+                    got: todo!(),
+                }
+            )
+        )
+    }
 }
 
 fn parse_alignment_specifier(parser: &mut ParseState) -> ParseResult<decl::AlignmentSpecifier> {
@@ -429,9 +504,9 @@ fn parse_alignment_specifier(parser: &mut ParseState) -> ParseResult<decl::Align
 }
 
 fn parse_declarator(parser: &mut ParseState) -> ParseResult<decl::Declarator> {
-//     // Pointer(); DirectDeclarator();
-//     // return decl::Declarator{}
-    todo!()
+    parse_pointer(parser); 
+    parse_direct_declarator(parser);
+    Ok(decl::Declarator{})
 }
 
 fn parse_direct_declarator(parser: &mut ParseState) -> ParseResult<decl::DirectDeclarator> {
@@ -498,17 +573,18 @@ fn parse_direct_declarator(parser: &mut ParseState) -> ParseResult<decl::DirectD
 }
 
 fn parse_pointer(parser: &mut ParseState) -> ParseResult<r#type::Pointer> {
-//     "*"; TypeQualifierList(iter);
+    parser.match_token(lexer::Token::Asterisk);
+    parse_type_qualifier_list(parser);
     todo!()
 }
 
 fn parse_type_qualifier_list(parser: &mut ParseState) -> ParseResult<decl::TypeQualifier> {
-//     TypeQualifier(iter);
+    parse_type_qualifier(parser);
     todo!()
 }
 
 fn parse_parameter_type_list(parser: &mut ParseState) -> ParseResult<decl::ParameterTypeList> {
-//     // decl::ParameterTypeList{}
+    // decl::ParameterTypeList{}
     todo!()
 }
 
@@ -517,63 +593,78 @@ fn parse_parameter_list(parser: &mut ParseState) -> ParseResult<Vec<decl::Parame
 }
 
 fn parse_parameter_declaration(parser: &mut ParseState) -> ParseResult<decl::ParameterDeclaration> {
-//     // decl::ParameterDeclaration{}
-//     // decl::ParameterDeclaration{}
+    // decl::ParameterDeclaration{}
+    // decl::ParameterDeclaration{}
     todo!()
 }
 
 fn parse_identifier_list(parser: &mut ParseState) -> ParseResult<Vec<String>> {
-//     // Identifier ("," Identifier)*
+    // parse_identifier(); ("," parse_identifier())*
     todo!()
 }
 
 fn parse_type_name(parser: &mut ParseState) -> ParseResult<String> {
-//     // SpecifierQualifierList AbstractDeclarator?
+    // parse_specifier_qualifier_list(); parse_abstract_declarator()?;
     todo!()
 }
 
 fn parse_abstract_declarator(parser: &mut ParseState) -> ParseResult<decl::AbstractDeclarator> {
-//     // Pointer => todo!(),
-//     // Pointer? DirectAbstractDeclarator => 
+    parse_pointer(parser);
+    parse_pointer(parser); 
+    parse_direct_abstract_declarator(parser);
     todo!()
 }
 
 fn parse_direct_abstract_declarator(parser: &mut ParseState) -> ParseResult<decl::DirectAbstractDeclarator> {
-// //     "(" AbstractDeclarator ")"
+//     "(" parse_abstract_declarator() ")"
 // //     => todo!(),
-// // DirectAbstractDeclarator? "[" TypeQualifierList? AssignmentExpression? "]"
+// parse_direct_abstract_declarator? "[" parse_type_qualifier_list? parse_assignment_expression? "]"
 // //     => todo!(),
-// // DirectAbstractDeclarator? "[" "static" TypeQualifierList? AssignmentExpression "]"
+// parse_direct_abstract_declarator? "[" "static" parse_type_qualifier_list? parse_assignment_xpression "]"
 // //     => todo!(),
-// // DirectAbstractDeclarator? "[" TypeQualifierList "static" AssignmentExpression "]"
+// parse_directAbstractDeclarator? "[" parse_type_qualifier_list "static" parse_assignment_expression "]"
 // //     => todo!(),
-// // DirectAbstractDeclarator? "[" "*" "]"
+// parse_direct_abstract_declarator? "[" "*" "]"
 // //     => todo!(),
-// // DirectAbstractDeclarator? "(" ParameterTypeList? ")"
+// parse_direct_abstract_declarator? "(" parse_parameter_type_list? ")"
     todo!()
 }
 
 fn parse_initializer(parser: &mut ParseState) -> ParseResult<decl::Initializer> {
-// //     <ae: AssignmentExpression>
-// //     => todo!(),
-// // "{" <il: InitializerList> ","? "}" 
-// //     => decl::Initializer::InitializerList(il),
-    todo!()
+    parser.parse_any(&[
+        Box::new(|iter| {
+            parse_assignment_expression(iter);
+            todo!()
+        }),
+        Box::new(|iter| {
+            iter.match_token(lexer::Token::LBrace);  
+            parse_initializer_list(iter);
+            iter.match_token(lexer::Token::Comma); 
+            iter.match_token(lexer::Token::RBrace); 
+            todo!()
+        })
+    ])
 }
 
 fn parse_initializer_list(parser: &mut ParseState) -> ParseResult<decl::InitializerList> {
-//     // Designation? Initializer ("," Designation? Initializer)* 
+    let designation = parser.optional_parse(parse_designation);
+    parse_initializer(parser);
+    // parser.expect_zero_or_n(|iter: &mut ParseState|{
+    //     iter.match_token(lexer::Token::Comma);
+    //     let designation = parser.optional_parse(parse_designation);
+    //     parse_initializer(iter);
+    // });
     todo!()
 }
 
-fn parse_designation(parser: &mut ParseState) -> ParseResult<decl::Designator> {
-//     // <DesignatorList> "="
-    todo!()
+fn parse_designation(parser: &mut ParseState) -> ParseResult<Vec<decl::Designator>> {
+    let designator_list= parse_designator_list(parser);
+    parser.match_token(lexer::Token::Assign)?;
+    designator_list
 }
 
-fn parse_designator_list(parser: &mut ParseState) -> ParseResult<decl::Designator> {
-//     // Vec<decl::Designator> = Designator+
-    todo!()
+fn parse_designator_list(parser: &mut ParseState) ->  ParseResult<Vec<decl::Designator>> {
+    parser.expect_one_or_n(parse_designator)
 }
 
 fn parse_designator(parser: &mut ParseState) -> ParseResult<decl::Designator> {
@@ -605,55 +696,80 @@ fn parse_static_assert_declaration(parser: &mut ParseState) -> ParseResult<decl:
 
 // Expression Rules
 
+// primary_expression: 
+// identifier
+// | constant
+// | string_literal
+// | "(" expression ")"
+// | generic_selection
 fn parse_primary_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_primary_expression");
+
     parser.parse_any(&[
         Box::new(|iter| {
             let ident = parse_identifier(iter)?;
             Ok(expr::Expression::Identifier(ident))
         }),
-        Box::new(|iter| {
-            let constant = parse_constant(iter)?;
-            Ok(expr::Expression::Literal(expr::Literal::Str(expr::StringLiteral{
-                value: constant,
-                prefix: None,
-            })))
-        }),
-        Box::new(|iter| {
-            let string = parse_string_literal(iter)?;
-            Ok(expr::Expression::Literal(expr::Literal::Str(expr::StringLiteral{
-                value: string,
-                prefix: None,
-            })))
-        }),
-        Box::new(|iter| {
-            iter.match_token(lexer::Token::LParenthesis);
-            let expression = parse_expression(iter)?; 
-            iter.match_token(lexer::Token::RParenthesis);
-            Ok(expression)
-        }),
-        Box::new(|iter| {
-            let generic_selection = parse_generic_selection(iter)?;
-            Ok(expr::Expression::GenericSelection(Box::new(generic_selection)))
-        })
+        // Box::new(|iter| {
+        //     let constant = parse_constant(iter)?;
+        //     Ok(expr::Expression::Literal(expr::Literal::Str(expr::StringLiteral{
+        //         value: constant,
+        //         prefix: None,
+        //     })))
+        // }),
+        // Box::new(|iter| {
+        //     let string = parse_string_literal(iter)?;
+        //     Ok(expr::Expression::Literal(expr::Literal::Str(expr::StringLiteral{
+        //         value: string,
+        //         prefix: None,
+        //     })))
+        // }),
+        // Box::new(|iter| {
+        //     iter.match_token(lexer::Token::LParenthesis);
+        //     let expression = parse_expression(iter)?; 
+        //     iter.match_token(lexer::Token::RParenthesis);
+        //     Ok(expression)
+        // }),
+        // Box::new(|iter| {
+        //     let generic_selection = parse_generic_selection(iter)?;
+        //     Ok(expr::Expression::GenericSelection(Box::new(generic_selection)))
+        // })
     ])
 }
 
+// generic_selection:
+// "_Generic" "(" assignment_expression "," parse_generic_assoc_list ")"
 fn parse_generic_selection(parser: &mut ParseState) -> ParseResult<expr::GenericSelectionExpr> {
+    println!("parse_generic_selection");
+
     parser.match_token(lexer::Token::Generic);
     parser.match_token(lexer::Token::LParenthesis);
     let expression = parse_assignment_expression(parser)?; 
     parser.match_token(lexer::Token::Comma);
-    let association_list = parse_generic_assocList(parser)?; 
+    let association_list = parse_generic_assoc_list(parser)?; 
     parser.match_token(lexer::Token::RParenthesis);
     Ok(expr::GenericSelectionExpr{expression, association_list})
 }
 
-fn parse_generic_assocList(parser: &mut ParseState) -> ParseResult<Vec<expr::GenericAssociation>> {
-    // GenericAssociation ("," GenericAssociation)* 
+// parse_generic_assoc_list: 
+// generic_association ("," generic_association)*
+fn parse_generic_assoc_list(parser: &mut ParseState) -> ParseResult<Vec<expr::GenericAssociation>> {
+    println!("parse_generic_assoc_list");
+
+    let first = parse_generic_association(parser)?;
+    let result = parser.expect_zero_or_n(|iter: &mut ParseState| {
+        iter.match_token(lexer::Token::Comma)?;
+        parse_generic_association(iter)
+    });
     todo!()
 }
 
+// generic_association:
+// type_name ":" assignment_expression
+// | "default" ":" assignment_expression
 fn parse_generic_association(parser: &mut ParseState) -> ParseResult<expr::GenericAssociation> {
+    println!("parse_generic_association");
+
     parser.parse_any(&[
         Box::new(|iter| {
             parse_type_name(iter); 
@@ -670,47 +786,40 @@ fn parse_generic_association(parser: &mut ParseState) -> ParseResult<expr::Gener
     ])
 }
 
-fn parse_postfix_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
-    parser.parse_any( &[
+//  Original rule:
+//
+//  postfix_expression:
+//  primary_expression
+//  | postfix_expression "[" expression "]" 
+//  | postfix_expression "(" parse_argument_expression_list? ")"
+//  | postfix_expression "." identifier
+//  | postfix_expression "->" identifier
+//  | postfix_expression "++"
+//  | postfix_expression "--"
+//  | ( type_name ) "{" initializer_list "}"
+//  | ( type_name ) "{" initializer_list "," "}"
+//  
+//  Rewritten:
+//
+//  C: A B*
+//
+//  A:
+//  primary_expression
+//  | ( type_name ) "{" initializer_list "}"
+//  | ( type_name ) "{" initializer_list "," "}"
+//  
+//  B:
+//  "[" expression "]"
+//  | "(" parse_argument_expression_list? ")"
+//  | "." identifier
+//  | "->" identifier
+//  | "++"
+//  | "--"
+pub (crate) fn parse_postfix_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_postfix_expression");
+
+    let expression = parser.parse_any( &[
         Box::new(|iter| parse_primary_expression(iter)),
-        Box::new(|iter| {
-            let lhs = parse_postfix_expression(iter)?; 
-            iter.match_token(lexer::Token::LBracket)?;
-            let rhs = parse_expression(iter)?;
-            iter.match_token(lexer::Token::RBracket)?;
-            return Ok(expr::TwoOperandsExpr::new_subscript(lhs, rhs));
-        }),
-        Box::new(|iter| {
-            let callie = parse_postfix_expression(iter)?; 
-            iter.match_token(lexer::Token::LParenthesis);
-            let args = iter.optional_parse(parse_argument_expression_list); 
-            iter.match_token(lexer::Token::RParenthesis);
-            return Ok(expr::CallExpr::new(callie, args.or(Default::default()).unwrap()));
-        }),
-        Box::new(|iter| {
-            let lhs = parse_postfix_expression(iter)?; 
-            iter.match_token(lexer::Token::Dot)?;
-            let ident = parse_identifier(iter)?;    
-            let rhs = expr::Expression::Identifier(ident);
-            return Ok(expr::TwoOperandsExpr::new_access(lhs, rhs));
-        }),
-        Box::new(|iter| {
-            let lhs = parse_postfix_expression(iter)?; 
-            iter.match_token(lexer::Token::Arrow);
-            let ident = parse_identifier(iter)?;
-            let rhs = expr::Expression::Identifier(ident);
-            return Ok(expr::TwoOperandsExpr::new_ptr_access(lhs, rhs));
-        }),
-        Box::new(|iter| {
-            let expr = parse_postfix_expression(iter)?; 
-            iter.match_token(lexer::Token::TwoPluses)?;
-            return Ok(expr::OneOperandExpr::new_postincrement(expr));
-        }),
-        Box::new(|iter| {
-            let expr = parse_postfix_expression(iter)?; 
-            iter.match_token(lexer::Token::TwoMinuses)?;
-            return Ok(expr::OneOperandExpr::new_postdecrement(expr));
-        }),
         Box::new(|iter| {
             iter.match_token(lexer::Token::LParenthesis);
             parse_type_name(iter); 
@@ -729,11 +838,58 @@ fn parse_postfix_expression(parser: &mut ParseState) -> ParseResult<expr::Expres
             iter.match_token(lexer::Token::Dot);
             iter.match_token(lexer::Token::RBrace);
             return Ok(expr::CompoundLiteral::new(Box::new(init_list)));
-        })
-    ])
+        }),
+    ])?;
+    
+    let mut operator = parser.parse_any(&[
+        // Box::new(|iter| {
+        //     iter.match_token(lexer::Token::LBracket)?;
+        //     let rhs = parse_expression(iter)?;
+        //     iter.match_token(lexer::Token::RBracket)?;
+        //     Ok(expr::TwoOperandsExpr::new_subscript(expr::Expression::None, rhs))
+        // }),
+        // Box::new(|iter| {
+        //     iter.match_token(lexer::Token::LParenthesis);
+        //     let args = iter.optional_parse(parse_argument_expression_list); 
+        //     iter.match_token(lexer::Token::RParenthesis);
+        //     Ok(expr::CallExpr::new(expr::Expression::None, args.or(Default::default()).unwrap()))
+        // }),
+        Box::new(|iter| { 
+            iter.match_token(lexer::Token::Dot)?;
+            let ident = parse_identifier(iter)?;    
+            let rhs = expr::Expression::Identifier(ident);
+            Ok(expr::TwoOperandsExpr::new_access(expr::Expression::None, rhs))
+        }),
+        Box::new(|iter| {
+            iter.match_token(lexer::Token::Arrow);
+            let ident = parse_identifier(iter)?;
+            let rhs = expr::Expression::Identifier(ident);
+            Ok(expr::TwoOperandsExpr::new_ptr_access(expr::Expression::None, rhs))
+        }),
+        Box::new(|iter| {
+            iter.match_token(lexer::Token::TwoPluses)?;
+            Ok(expr::OneOperandExpr::new_postincrement(expr::Expression::None))
+        }),
+        Box::new(|iter| {
+            iter.match_token(lexer::Token::TwoMinuses)?;
+            Ok(expr::OneOperandExpr::new_postdecrement(expr::Expression::None))
+        }),
+    ])?;
+    
+    match operator {
+        expr::Expression::Call(ref mut expr) => expr.callie = expression,
+        expr::Expression::TwoOperands(ref mut expr) => expr.lhs = expression,
+        expr::Expression::OneOperand(ref mut expr) => expr.value = expression,
+        _ => panic!()
+    }
+
+    Ok(operator)
 }
 
+// argument_expression_list: 
+// assignment_expression ("," assignment_expression)*
 fn parse_argument_expression_list(parser: &mut ParseState) -> ParseResult<Vec<expr::Expression>> {
+    println!("parse_argument_expression_list");
     // parser.parse_any(&[
     //     Box::new(|iter| parse_assignment_expression(iter)),
     //     Box::new(|iter| {
@@ -744,7 +900,32 @@ fn parse_argument_expression_list(parser: &mut ParseState) -> ParseResult<Vec<ex
     todo!()
 }
 
+// unary_expression: 
+// postfix_expression
+// | "++" unary_expression
+// | "--" unary_expression
+// | unary_operator unary_expression
+// | "sizeof" unary_expression
+// | "sizeof" "(" type_name ")"
+// | "_Alignof" "(" type_name ")"
+//
+// C: A* B
+//
+// A:
+// | "++" 
+// | "--" 
+// | unary_operator 
+// | "sizeof" 
+// | "sizeof" "(" type_name ")"
+// | "_Alignof" "(" type_name ")"
+//
+// B:
+// postfix_expression
+// | "sizeof" "(" type_name ")"
+// | "_Alignof" "(" type_name ")"
 fn parse_unary_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_unary_expression");
+
     parser.parse_any(&[
         Box::new(|iter| parse_postfix_expression(iter)),
         Box::new(|iter| {
@@ -784,16 +965,19 @@ fn parse_unary_expression(parser: &mut ParseState) -> ParseResult<expr::Expressi
     ])
 }
 
+// unary_operator: "&" | "*" | "+" | "-" | "~" | "!"
 fn parse_unary_operator(parser: &mut ParseState) -> ParseResult<expr::UnaryOp> {
+    println!("parse_unary_operator");
+
     parser.next();
     use lexer::Token::*;
     match parser.iter.current_item.unwrap().value {
-        lexer::Token::Ampersand => Ok(expr::UnaryOp::Address),
-        lexer::Token::Asterisk => Ok(expr::UnaryOp::Indirection),
-        lexer::Token::Plus => Ok(expr::UnaryOp::Positive),
-        lexer::Token::Minus => Ok(expr::UnaryOp::Negative),
-        lexer::Token::Tilde => Ok(expr::UnaryOp::BitwiseNot),
-        lexer::Token::ExclamationMark => Ok(expr::UnaryOp::LogicalNot),
+        Ampersand => Ok(expr::UnaryOp::Address),
+        Asterisk => Ok(expr::UnaryOp::Indirection),
+        Plus => Ok(expr::UnaryOp::Positive),
+        Minus => Ok(expr::UnaryOp::Negative),
+        Tilde => Ok(expr::UnaryOp::BitwiseNot),
+        ExclamationMark => Ok(expr::UnaryOp::LogicalNot),
         _ => Err(ParserError::MatchOrError(
                 MatchOrError{
                     expected: vec![
@@ -811,20 +995,36 @@ fn parse_unary_operator(parser: &mut ParseState) -> ParseResult<expr::UnaryOp> {
     }
 }
 
+// cast_expression:
+// unary_expression
+// | "(" type_name ")" cast_expression
+//
+// C: A* B
+//
+// A: "(" type_name ")" 
+// B: unary_expression
 fn parse_cast_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
-    parser.parse_any(&[
-        Box::new(|iter| parse_unary_expression(iter)),
-        Box::new(|iter| {
-            iter.match_token(lexer::Token::LParenthesis)?;
-            parse_type_name(iter);  
-            iter.match_token(lexer::Token::RParenthesis);
-            let expr = parse_cast_expression(iter)?;
-            return Ok(expr::CastExr::new((), expr));
-        })
-    ])
+    println!("parse_cast_expression");
+    
+    let ops = parser.expect_zero_or_n(|iter: &mut ParseState| {
+        iter.match_token(lexer::Token::LParenthesis)?;
+        parse_type_name(iter);  
+        iter.match_token(lexer::Token::RParenthesis);
+        let expr = parse_cast_expression(iter)?;
+        return Ok(expr::CastExr::new((), expr));
+    });
+
+    parse_unary_expression(parser)
 }
 
+// multiplicative_expression:
+// cast_expression
+// | multiplicative_expression "*" cast_expression
+// | multiplicative_expression "/" cast_expression
+// | multiplicative_expression "%" cast_expression
+//
 fn parse_multiplicative_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_multiplicative_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_cast_expression(iter)),
         Box::new(|iter| {
@@ -848,7 +1048,12 @@ fn parse_multiplicative_expression(parser: &mut ParseState) -> ParseResult<expr:
     ])
 }
 
+// additive_expression:
+//  multiplicative_expression 
+//  | additive_expression "+" multiplicative_expression
+//  | additiveExpression "-" multiplicative_expression
 fn parse_additive_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_additive_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_multiplicative_expression(iter)),
         Box::new(|iter| {
@@ -866,7 +1071,12 @@ fn parse_additive_expression(parser: &mut ParseState) -> ParseResult<expr::Expre
     ])
 }
 
+// shift_expression:
+// | additive_expression
+// | shift_expression "<<" additive_expression
+// | shift_expression ">>" additive_expression
 fn parse_shift_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_shift_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_additive_expression(iter)),
         Box::new(|iter| {
@@ -884,7 +1094,14 @@ fn parse_shift_expression(parser: &mut ParseState) -> ParseResult<expr::Expressi
     ])
 }
 
+// relational_expression:
+// shift_expression
+// | relational_expression "<" shift_expression
+// | relational_expression ">" shift_expression
+// | relational_expression "<=" shift_expression
+// | relational_expression ">=" shift_expression
 fn parse_relational_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_relational_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_shift_expression(iter)),
         Box::new(|iter| {
@@ -914,7 +1131,12 @@ fn parse_relational_expression(parser: &mut ParseState) -> ParseResult<expr::Exp
     ])
 }
 
+// equality_expression:
+// relational_expression
+// | equality_expression "==" relational_expression
+// | equality_expression "!=" relational_expression
 fn parse_equality_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_equality_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_relational_expression(iter)),
         Box::new(|iter| {
@@ -932,7 +1154,11 @@ fn parse_equality_expression(parser: &mut ParseState) -> ParseResult<expr::Expre
     ])
 }
 
+// and_expression:
+// equality_expression
+// | and_expression "&" equality_expression
 fn parse_and_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_and_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_equality_expression(iter)),
         Box::new(|iter| {
@@ -944,7 +1170,11 @@ fn parse_and_expression(parser: &mut ParseState) -> ParseResult<expr::Expression
     ])
 }
 
+// exclusive_or_expressio:
+// and_expression
+// | exclusive_or_expression "^" and_expression
 fn parse_exclusive_or_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_exclusive_or_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_and_expression(iter)),
         Box::new(|iter| {
@@ -956,7 +1186,11 @@ fn parse_exclusive_or_expression(parser: &mut ParseState) -> ParseResult<expr::E
     ])
 }
 
+// inclusive_or_expression:
+// exclusive_or_expression 
+// | inclusive_or_expression "|" exclusive_or_expression
 fn parse_inclusive_or_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_inclusive_or_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_exclusive_or_expression(iter)),
         Box::new(|iter| {
@@ -968,7 +1202,11 @@ fn parse_inclusive_or_expression(parser: &mut ParseState) -> ParseResult<expr::E
     ])
 }
 
+// inclusive_or_expression:
+// inclusive_or_expression
+// | logical_and_expression "&&" inclusive_or_expression
 fn parse_logical_and_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_logical_and_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_inclusive_or_expression(iter)),
         Box::new(|iter| {
@@ -980,7 +1218,11 @@ fn parse_logical_and_expression(parser: &mut ParseState) -> ParseResult<expr::Ex
     ])
 }
 
+// logical_and_expression:
+// logical_and_expression
+// | logical_or_expression "||" logical_and_expression
 fn parse_logical_or_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_logical_or_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_logical_and_expression(iter)),
         Box::new(|iter| {
@@ -992,7 +1234,11 @@ fn parse_logical_or_expression(parser: &mut ParseState) -> ParseResult<expr::Exp
     ])
 }
 
+// conditional_expression:
+// logical_or_expression 
+// | logical_or_expression "?" expression ":" conditional_expression
 fn parse_conditional_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_conditional_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_logical_or_expression(iter)),
         Box::new(|iter| {
@@ -1006,7 +1252,11 @@ fn parse_conditional_expression(parser: &mut ParseState) -> ParseResult<expr::Ex
     ])
 }
 
+// assignment_expression:
+// conditional_expression
+// | unary_expression assignment_operator assignment_expression
 fn parse_assignment_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_assignment_expression");
     parser.parse_any(&[
         Box::new(|iter| parse_conditional_expression(iter)),
         Box::new(|iter| {
@@ -1018,7 +1268,21 @@ fn parse_assignment_expression(parser: &mut ParseState) -> ParseResult<expr::Exp
     ])
 }
 
+// assignment_operator:
+// "=" 
+// | "*=" 
+// | "/=" 
+// | "%=" 
+// | "+=" 
+// | "-=" 
+// | "<<=" 
+// | ">>=" 
+// | "&=" 
+// | "^="
+// | "|="
 fn parse_assignment_operator(parser: &mut ParseState) -> ParseResult<expr::BiTag> {
+    println!("parse_assignment_operator");
+
     parser.next(); 
     let tok = parser.iter.current_item.unwrap().value;
     use lexer::Token::*;
@@ -1056,7 +1320,12 @@ fn parse_assignment_operator(parser: &mut ParseState) -> ParseResult<expr::BiTag
     };
 }
 
-fn parse_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+// expression:
+// assignment_expression ("," assignment_expression)*
+pub (crate) fn parse_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_expression");
+
+    parse_primary_expression(parser)
     // let first = parse_assignment_expression(parser)?;
     // let result = parser.expect_zero_or_n(|iter: &mut ParseState| {
     //     iter.match_token(lexer::Token::Comma)?;
@@ -1068,61 +1337,12 @@ fn parse_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
     // Ok(result.into_iter().fold(first, |acc, el| {
     //     expr::TwoOperandsExpr::new_comma(acc, el)
     // }))
-
-    use lexer::Token::*;
-    enum Associativity {
-        LeftToRight,
-        RightToLeft,
-    }
-    let parse_table = [
-        (Comma, 1, Associativity::LeftToRight),
-        (Comma, 2, Associativity::LeftToRight),
-        (Comma, 3, Associativity::LeftToRight),
-        (Comma, 4, Associativity::LeftToRight),
-        (Comma, 5, Associativity::LeftToRight),
-        (Comma, 6, Associativity::LeftToRight),
-        (Comma, 7, Associativity::LeftToRight),
-        (Comma, 8, Associativity::LeftToRight),
-        (Comma, 9, Associativity::LeftToRight),
-        (Comma, 10, Associativity::LeftToRight),
-        (Comma, 11, Associativity::LeftToRight),
-        (Comma, 12, Associativity::LeftToRight),
-        (Comma, 13, Associativity::LeftToRight),
-
-        
-        
-        
-        (AmpersandAssign, 14, Associativity::RightToLeft),
-        (CaretAssign, 14, Associativity::RightToLeft),
-        (VBarAssign, 14, Associativity::RightToLeft),
-        (RGuillemetsAssign, 14, Associativity::RightToLeft),
-        (LGuillemetsAssign, 14, Associativity::RightToLeft),
-        (PercentAssign, 14, Associativity::RightToLeft),
-        (SlashAssign, 14, Associativity::RightToLeft),
-        (AsteriskAssign, 14, Associativity::RightToLeft),
-        (MinusAssign, 14, Associativity::RightToLeft),
-        (PlusAssign, 14, Associativity::RightToLeft),
-        (Assign, 14, Associativity::RightToLeft),
-        
-        (Comma, 15, Associativity::LeftToRight),
-    ];
-    let mut ops = Vec::<lexer::Token>::new();
-    let mut tmp = VecDeque::<lexer::Token>::new();
-    
-    parser.next();
-    let tok = parser.iter.current_item.unwrap().value;
-    
-    if matches!(tok, Identifier | Constant | StringLiteral) {
-        tmp.push_back(tok);
-    }
-    if matches!(tok, Comma) {
-        ops.push(tok);
-    }
-
-    todo!()
 }
 
+// constant_expression:
+// conditional_expression
 fn parse_constant_expression(parser: &mut ParseState) -> ParseResult<expr::Expression> {
+    println!("parse_constant_expression");
     parse_conditional_expression(parser)
 }
 

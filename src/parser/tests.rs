@@ -27,7 +27,31 @@ mod expression_test {
 
     #[test]
     fn parse_expression() {
+        const input1: &str = "ident[1]";
+        const input2: &str = "ident()";
+        const input3: &str = "ident1.ident2";
+        const input4: &str = "ident1->ident2";
+        const input5: &str = "ident1++";
+        const input6: &str = "ident2--";
+        
+        let mut parser = parser::PostfixExpressionParser::new();
+        // let res = parser.parse(input1).unwrap();
+        // dbg!(res);
 
+        // let res = parser.parse(input2).unwrap();
+        // dbg!(res);
+
+        let res = parser.parse(input3).unwrap();
+        dbg!(res);
+
+        let res = parser.parse(input4).unwrap();
+        dbg!(res);
+
+        let res = parser.parse(input5).unwrap();
+        dbg!(res);
+
+        let res = parser.parse(input6).unwrap();
+        dbg!(res);
     }
 }
 

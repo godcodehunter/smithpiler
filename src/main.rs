@@ -4,17 +4,56 @@
 #![feature(type_alias_impl_trait)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
-// mod translator;
+mod translator;
 mod ast;
-// mod inspect_store;
+mod inspect_store;
 mod parser;
+mod expression_translator;
 
-// use inspect_store::InspectStore;
-// use translator::Translator;
+use inspect_store::InspectStore;
+use translator::Translator;
+use parser::Parser;
 
+extern crate llvm_sys as llvm;
 extern crate clap;
 use clap::{Arg, App, SubCommand};
-use parser::{Options, Parser};
+use std::process::Command;
+use std::path::{PathBuf, Path};
+use std::os::unix::ffi::OsStrExt;
+
+/// Accept path to llvm bitcode file and generate object file with same name   
+fn generate_object(ll_file: &std::path::Path) {
+	let status = Command::new("lcc")
+	.arg("-filetype=obj")
+	.arg(ll_file)
+	.status()
+	.expect("failed to execute llc");
+	
+	if !status.success() {
+		panic!("generating object file error: {}", status);
+	} 
+}
+
+/// Accepts array of path to objects files and link they into executable 
+/// NOTE: https://stackoverflow.com/questions/3577922/how-to-link-a-gas-assembly-program-that-uses-the-c-standard-library-with-ld-with
+fn create_executable(obj_files: &[&std::path::Path]) {
+	let status = Command::new("ld")
+	.args(&[
+		"-dynamic-linker",
+		"/lib64/ld-linux-x86-64.so.2",
+		"/usr/lib/x86_64-linux-gnu/crt1.o",
+		"/usr/lib/x86_64-linux-gnu/crti.o",
+		"-lc",
+	])
+	.args(obj_files)
+	.arg("/usr/lib/x86_64-linux-gnu/crtn.o")
+	.status()
+	.expect("failed to execute ld");
+
+	if !status.success() {
+		panic!("linking executable: {}", status);
+	}
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>>  {
 	let matches = App::new("smithpiler")
@@ -33,21 +72,46 @@ fn main() -> Result<(), Box<dyn std::error::Error>>  {
 			.about("Printing llvmir"))
 		.get_matches();
 	
-	let path = matches.value_of("INPUT").unwrap();
-	let options = Options {
-		dump_ast: matches.is_present("dump_ast"), 
-		dump_lexer: matches.is_present("dump_lexer"),
-	};
+	let input = Path::new(matches.value_of_os("INPUT").unwrap());
 
-	// let inspect_store = InspectStore::new();
-	let unit = Parser::new(Some(options)).parse(path)?;
-	// println!("{}", unit);
-	// let module = Translator::new(inspect_store).translate(unit);
-	// if matches.is_present("dump_llvmir") {
-	// 	unsafe {
-	// 		llvm_sys::core::LLVMDumpModule(module);
-	// 	}
-	// }
+	let parser = Parser::new();
+	if matches.is_present("dump_lexer") {
+		parser.dump_lexer(input);
+		return Ok(());
+	}
+
+	let unit = parser.parse(input)?;
+	if matches.is_present("dump_ast") {
+		println!("{}", unit);
+		return Ok(());
+	}
+
+	let inspect_store = InspectStore::new();
+	let module = Translator::new(inspect_store).translate(&unit);
+
+	let mut file_name: PathBuf = unit.source.file_name()
+		.unwrap()
+		.to_os_string()
+		.into();
+	file_name.set_extension("bc");
+
+	if matches.is_present("dump_llvmir") {
+		let status = Command::new("llvm-dis")
+			.arg("file.bc")
+			.status()
+			.expect("failed to execute llvm-dis");
+			if !status.success() {
+				panic!("print llvm assembler: {}", status);
+			}
+	}
+
+	unsafe {
+		llvm::bit_writer::LLVMWriteBitcodeToFile(module, file_name.as_os_str().as_bytes().as_ptr() as _);
+	}
+	file_name.set_extension("o");
+	generate_object(file_name.as_path());
+	create_executable(&[file_name.as_path()]);
+	
 	Ok(())
 }
 

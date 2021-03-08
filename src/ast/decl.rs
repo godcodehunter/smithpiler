@@ -61,7 +61,7 @@ pub enum TypeSpecifier {
     AtomicTypeSpecifier(AtomicTypeSpecifier),
     StructOrUnionSpecifier(StructOrUnionSpecifier),
     EnumSpecifier(EnumSpecifier),
-    TypedefName,
+    TypedefName(String),
 }
 
 #[derive(Debug)]
@@ -100,8 +100,8 @@ pub enum StructDeclaration {
 
 #[derive(Debug)]
 pub struct Filed {
-    qualifier: SpecifierQualifierList,
-    declarator: Vec<StructDeclarator>,
+    pub qualifier: SpecifierQualifierList,
+    pub declarator: Vec<StructDeclarator>,
 } 
 
 #[derive(Debug)]
@@ -127,8 +127,8 @@ pub struct EnumSpecifier {
 }
 
 pub struct Enumerator {
-    identifier: String,
-    expression: expr::Expression,
+    pub identifier: String,
+    pub expression: expr::Expression,
 }
 
 #[derive(Debug)]

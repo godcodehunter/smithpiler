@@ -14,6 +14,7 @@ pub enum Expression {
     Ternary(Box<Ternary>),
     Sizeof(Box<Sizeof>),
     AlignOf(AlignOf),
+    None
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
