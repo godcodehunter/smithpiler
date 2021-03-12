@@ -559,7 +559,7 @@ impl<'ast> Translator {
             );
             let builder = llvm::core::LLVMCreateBuilderInContext(self.context);
             llvm::core::LLVMPositionBuilderAtEnd(builder, block);
-            // StatementTranslator::new(&self).translate_statement(&ast::stmt::Statement::Compound(func.compound)); 
+            StatementTranslator::new(&self).translate_statement(&function_definition.node.statement); 
         }
     }
 
@@ -617,7 +617,7 @@ impl<'a> Drop for Translator {
 }
 
 pub struct StatementTranslator<'a> {
-    variables: HashMap<String, llvm::prelude::LLVMValueRef>,
+    variables: HashMap<Identifier, llvm::prelude::LLVMValueRef>,
     owner: &'a Translator, 
     // expr_trans: MaybeUninit<ExpressionTranslator<'a>>,
 }

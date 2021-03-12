@@ -5,9 +5,7 @@
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 mod translator;
-mod inspect_store;
-mod parser;
-mod expression_translator;
+mod r#type;
 
 use translator::Translator;
 
@@ -17,10 +15,13 @@ use clap::{Arg, App, SubCommand};
 use std::process::Command;
 use std::path::{PathBuf, Path};
 use std::os::unix::ffi::OsStrExt;
+use lang_c::driver::{Config, parse};
+use lang_c::visit::Visit;
+use lang_c::print::Printer;
 
 /// Accept path to llvm bitcode file and generate object file with same name   
 fn generate_object(ll_file: &std::path::Path) {
-	let status = Command::new("lcc")
+	let status = Command::new("llc")
 	.arg("-filetype=obj")
 	.arg(ll_file)
 	.status()
@@ -70,42 +71,48 @@ fn main() -> Result<(), Box<dyn std::error::Error>>  {
 		.get_matches();
 	
 	let input = Path::new(matches.value_of_os("INPUT").unwrap());
+	
+	let config = Config::default();
+	let parse = parse(&config, input)?;
 
-	let parser = Parser::new();
-	if matches.is_present("dump_lexer") {
-		parser.dump_lexer(input);
-		return Ok(());
-	}
+	// if matches.is_present("dump_lexer") {
+	// 	parser.dump_lexer(input);
+	// 	return Ok(());
+	// }
 
-	let unit = parser.parse(input)?;
 	if matches.is_present("dump_ast") {
-		println!("{}", unit);
+		let s = &mut String::new();
+		Printer::new(s).visit_translation_unit(&parse.unit);
+		println!("{}", s);
 		return Ok(());
 	}
 
-	let module = Translator::new(inspect_store).translate(&unit);
+	let mut translator = Translator::new();
+	translator.translate(parse, input.to_str().unwrap().into());
+	translator.emit_diagnostics();
 
-	let mut file_name: PathBuf = unit.source.file_name()
+	let mut file_name: PathBuf = input.file_name()
 		.unwrap()
 		.to_os_string()
 		.into();
 	file_name.set_extension("bc");
+	
+	translator.write_to_file(file_name.clone());
 
 	if matches.is_present("dump_llvmir") {
 		let status = Command::new("llvm-dis")
-			.arg("file.bc")
+			.arg(file_name.clone())
+			.args(&["-o", "-"])
 			.status()
 			.expect("failed to execute llvm-dis");
 			if !status.success() {
 				panic!("print llvm assembler: {}", status);
 			}
+		return Ok(());
 	}
 
-	unsafe {
-		llvm::bit_writer::LLVMWriteBitcodeToFile(module, file_name.as_os_str().as_bytes().as_ptr() as _);
-	}
-	file_name.set_extension("o");
 	generate_object(file_name.as_path());
+	file_name.set_extension("o");
 	create_executable(&[file_name.as_path()]);
 	
 	Ok(())
