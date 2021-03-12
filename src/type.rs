@@ -1,15 +1,43 @@
-use super::expr::Expression;
-
-pub struct Pointer {
-
-}
-
 // Any type in the C programming language.
 #[derive(Clone, Eq, PartialEq)]
 pub enum Type {
     Fundamental(Fundamental),
     Enumerated(EnumeratedType),
     Derived(DerivedType),
+}
+
+impl Type {
+    pub fn new_bool() -> Self {
+        todo!()
+    }
+
+    pub fn new_void() -> Self {
+        todo!()
+    }
+
+    pub fn new_signed_char() -> Self {
+        todo!()
+    }
+
+    pub fn new_unsigned_char() -> Self {
+        todo!()
+    }
+
+    pub fn new_signed_short_int() -> Self {
+        todo!()
+    }
+
+    pub fn new_signed_int() -> Self {
+        Type::Fundamental(Fundamental::SignedInteger(SignedIntegerType::ShortInt))
+    }
+
+    pub fn new_signed_long_int() -> Self {
+        todo!()
+    }
+
+    pub fn new_signed_long_long_int() -> Self {
+        todo!()
+    }
 }
 
 impl Type {
@@ -82,7 +110,7 @@ pub struct EnumeratedType {
 // A variant name with a constant integer expression.
 pub struct EnumeratedTypeVariant {
     id: String,
-    constant: Expression,
+    // constant: Expression,
 }
 
 #[derive(Clone, Eq, PartialEq)]

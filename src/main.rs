@@ -5,14 +5,11 @@
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 mod translator;
-mod ast;
 mod inspect_store;
 mod parser;
 mod expression_translator;
 
-use inspect_store::InspectStore;
 use translator::Translator;
-use parser::Parser;
 
 extern crate llvm_sys as llvm;
 extern crate clap;
@@ -86,7 +83,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>>  {
 		return Ok(());
 	}
 
-	let inspect_store = InspectStore::new();
 	let module = Translator::new(inspect_store).translate(&unit);
 
 	let mut file_name: PathBuf = unit.source.file_name()

@@ -1,5 +1,5 @@
 use super::lexer;
-use crate::ast::{expr, stmt, decl, self, r#type};
+use crate::ast::{expr, stmt, decl, self};
 pub use super::public_parser::*;
 use std::collections::VecDeque;
 use std::collections::HashMap;
@@ -372,11 +372,12 @@ fn parse_struct_declaration(parser: &mut ParseState) -> ParseResult<decl::Struct
             let qualifier = parse_specifier_qualifier_list(iter)?; 
             let declarator = parse_struct_declarator_list(iter)?; 
             iter.match_token(lexer::Token::Semicolon)?;
-            Ok(decl::StructDeclaration::Field(decl::Filed{qualifier, declarator}))
+            todo!()
         }),
         Box::new(|iter| {
             let static_assert_declaration = parse_static_assert_declaration(iter)?;
-            Ok(decl::StructDeclaration::StaticAssert(static_assert_declaration))
+            // Ok(decl::StructDeclaration::StaticAssert(static_assert_declaration))
+            todo!()
         })
     ])
 }
@@ -506,7 +507,7 @@ fn parse_alignment_specifier(parser: &mut ParseState) -> ParseResult<decl::Align
 fn parse_declarator(parser: &mut ParseState) -> ParseResult<decl::Declarator> {
     parse_pointer(parser); 
     parse_direct_declarator(parser);
-    Ok(decl::Declarator{})
+    todo!()
 }
 
 fn parse_direct_declarator(parser: &mut ParseState) -> ParseResult<decl::DirectDeclarator> {
@@ -572,7 +573,7 @@ fn parse_direct_declarator(parser: &mut ParseState) -> ParseResult<decl::DirectD
     ])
 }
 
-fn parse_pointer(parser: &mut ParseState) -> ParseResult<r#type::Pointer> {
+fn parse_pointer(parser: &mut ParseState) -> ParseResult<decl::Pointer> {
     parser.match_token(lexer::Token::Asterisk);
     parse_type_qualifier_list(parser);
     todo!()
@@ -1353,7 +1354,7 @@ pub(crate) fn parse_statement(parser: &mut ParseState) -> ParseResult<stmt::Stat
         Box::new(|iter| parse_labeled_statement(iter)),
         Box::new(|iter| {
             let compound = parse_compound_statement(iter)?;
-            Ok(stmt::Statement::Compound(compound))
+            Ok(stmt::Statement::CompoundStatement(compound))
         }),
         Box::new(|iter| parse_expression_statement(iter)),
         Box::new(|iter| parse_selection_statement(iter)),
@@ -1362,11 +1363,11 @@ pub(crate) fn parse_statement(parser: &mut ParseState) -> ParseResult<stmt::Stat
     ])
 }
 
-fn parse_compound_statement(parser: &mut ParseState) -> ParseResult<stmt::CompoundStmt> {
+fn parse_compound_statement(parser: &mut ParseState) -> ParseResult<stmt::CompoundStatement> {
     parser.match_token(lexer::Token::LBrace);
     let result = parser.expect_zero_or_n(parse_block_item);
     parser.match_token(lexer::Token::RBrace);
-    return Ok(stmt::CompoundStmt::new(result));
+    return Ok(stmt::CompoundStatement::new(result));
 }
 
 fn parse_block_item(parser: &mut ParseState) -> ParseResult<stmt::BlockItem> {

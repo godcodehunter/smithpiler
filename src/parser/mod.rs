@@ -4,12 +4,12 @@ mod parser;
 mod public_parser;
 #[cfg(test)]
 mod tests;
-use crate::ast;
 
 use std::{path::Path, io::Read};
 use std::fs::File;
 use parser::TranslationUnitParser;
 use crate::parser::public_parser::Parser as _;
+use lang_c::ast;
 
 pub struct Parser {
 
@@ -28,7 +28,7 @@ impl Parser {
         Ok(())
     }
 
-    pub fn parse<'source>(&self, path: &'source std::path::Path) -> Result<ast::TranslationUnit<'source>, Box<dyn std::error::Error>> {   
+    pub fn parse<'source>(&self, path: &'source std::path::Path) -> Result<ast::TranslationUnit, Box<dyn std::error::Error>> {   
         let mut file = File::open(Path::new(path))?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
