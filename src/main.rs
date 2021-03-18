@@ -6,8 +6,13 @@
 #![feature(maybe_uninit_ref)]
 mod translator;
 mod r#type;
-
+mod expression;
 use translator::Translator;
+mod utils;
+mod diagnostics;
+mod translate_type;
+mod type_cast;
+mod statement;
 
 extern crate llvm_sys as llvm;
 extern crate clap;
@@ -88,7 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>  {
 	}
 
 	let mut translator = Translator::new();
-	translator.translate(parse, input.to_str().unwrap().into());
+	translator.translate(&parse, input.to_str().unwrap().into());
 	translator.emit_diagnostics();
 
 	let mut file_name: PathBuf = input.file_name()
