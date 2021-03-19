@@ -184,13 +184,24 @@ impl<'ast> Translator<'ast> {
                 holder.process_specifier(spec);
             }
         }
-        let ty: Type = holder.try_into().unwrap();
+        let mut ty: Type = holder.try_into().unwrap();
         let declarator = declaration.node.declarator.as_ref().unwrap();
         match &declarator.node.kind.node {
             DeclaratorKind::Identifier(ident) => {
+                for der in &declarator.node.derived {
+                    match &der.node {
+                        DerivedDeclarator::Pointer(ptr) => {
+                            ty = Type::Derived(DerivedType::Pointer(PointerType(ty.into())));
+                        }
+                        // DerivedDeclarator::Array(_) => {}
+                        // DerivedDeclarator::Function(_) => {}
+                        // DerivedDeclarator::KRFunction(_) => {}
+                        _ => todo!(),
+                    }
+                }
                 return (ident, ty);
             }
-            _ => todo!(),
+            _ => todo!()
         }
     }
 

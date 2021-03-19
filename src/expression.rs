@@ -1,6 +1,7 @@
 use lang_c::{ast::*, span::Node};
 use crate::{translator::{BaseTranslator, NOP_STUB, TranslatedValue, Translator}, type_cast::{implicit_type_cast, translate_type_cast}};
-use crate::r#type::Type;
+use crate::r#type::*;
+use std::collections::VecDeque;
 
 impl<'ast> Translator<'ast> {
     fn translate_greater(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
@@ -324,20 +325,6 @@ impl<'ast> Translator<'ast> {
         }
     }
 
-    fn translate_call<I: Iterator<Item = llvm::prelude::LLVMValueRef>>(&mut self, callie: llvm::prelude::LLVMValueRef, iter: I) -> TranslatedValue {                 
-        // unsafe {
-        //     llvm::core::LLVMBuildCall2(
-        //         self.builder(),
-        //         ,
-        //         func,
-        //         ,
-        //         iter.len() as _,
-        //         NOP_STUB
-        //     )
-        // }
-        todo!()
-    }
-
     fn translate_sizeof(&mut self, node: &Node<TypeName>)  -> TranslatedValue {
         todo!()
         // unsafe {
@@ -390,55 +377,26 @@ impl<'ast> Translator<'ast> {
     }
 
     fn translate_string_literal(&self, lit: &Node<Vec<String>>) -> TranslatedValue {
-        // unsafe { 
-        //     let char_ty = Type::new_unsigned_char();
-        //     let lang_type = Type::Derived(DerivedType::Pointer(PointerType(Box::new(char_ty)))); 
-        //     let value = llvm::core::LLVMConstStringInContext(
-        //         self.context(),
-        //         lit.value.as_ptr() as _, 
-        //         lit.value.len(),
-        //         false as _,
-        //     );
-        //     TranslatedValue{value, lang_type} 
-        // }
-        todo!()
-    }
+        unsafe { 
+            let char_ty = Type::new_unsigned_char();
+            let ty = Type::Derived(DerivedType::Pointer(PointerType(char_ty.into())));
 
-    fn flatten(expr: &Node<Expression>) -> Vec<&Node<Expression>> {
-        let mut flatten = Vec::new();
-
-        let mut stack = vec![expr];
-        while !stack.is_empty() {
-            let last = stack.pop().unwrap();
-            flatten.push(last);
-            for neighbor in last.neighbors() {
-                stack.push(neighbor)
-            }
+            let value = llvm::core::LLVMBuildGlobalStringPtr(
+                self.builder(),
+                lit.node[0].as_ptr() as _, 
+                NOP_STUB
+            );
+            llvm::core::LLVMDumpType(llvm::core::LLVMTypeOf(value));
+            println!();
+            TranslatedValue{value, lang_type: ty} 
         }
-
-        flatten
     }
 
     pub fn translate_expression(&mut self, expr: &Node<Expression>) -> TranslatedValue {
         let post_translations: Vec<Box<dyn Fn(&mut Self) -> ()>>;
-        let flatten = Self::flatten(expr);
-        let mut tmp_stack = Vec::<TranslatedValue>::new();
 
-        for item in flatten.iter().rev() {
-            let translated = self.step(item, &mut tmp_stack);
-            tmp_stack.push(translated);
-        }
-        
-        // while !post_translations.is_empty() {
-        //     let action = post_translations.pop().unwrap();
-        //     action(self);
-        // }
-        tmp_stack.pop().unwrap()
-    }
-
-    fn step(&mut self, node: &Node<Expression>, tmp: &mut Vec<TranslatedValue>) -> TranslatedValue {
         unsafe { 
-            match &node.node {
+            match &expr.node {
                 Expression::Identifier(ident) => {
                     self.resolve_variable(&ident.node)
                 },
@@ -453,114 +411,126 @@ impl<'ast> Translator<'ast> {
                 Expression::Member(_) => {
                     todo!()
                 },
-                Expression::Call(expr) => {
-                    let callie = tmp.pop().unwrap();  
-                    // self.translate_call(callie.0, tmp.into_iter())
-                    todo!()
-                },
-                Expression::SizeOf(expr) => {
-                    self.translate_sizeof(&*expr)
-                },
-                Expression::AlignOf(expr) => {
-                    todo!()
-                },
-                Expression::UnaryOperator(expr) => {
-                    match expr.node.operator.node {
-                        UnaryOperator::PostIncrement => todo!(),
-                        UnaryOperator::PostDecrement => todo!(),
-                        UnaryOperator::PreIncrement => todo!(),
-                        UnaryOperator::PreDecrement => todo!(),
-                        UnaryOperator::Address => todo!(),
-                        UnaryOperator::Indirection => todo!(),
-                        UnaryOperator::Plus => todo!(),
-                        UnaryOperator::Minus => todo!(),
-                        UnaryOperator::Complement => todo!(),
-                        UnaryOperator::Negate => todo!(),
-                        UnaryOperator::SizeOf => todo!(),
-                    }
-                },
-                Expression::Cast(expr)=> {
-                    // let val = self.translate_expression_tree(expr.expr.as_ref()); 
-                    // let val = translate_type_cast(self, val.0, &val.1, expr.ty.as_ref());
-                    // (val, expr.ty.as_ref().to_owned())
-                    todo!()
-                },
-                Expression::BinaryOperator(expr) => {
-                    let lhs = tmp.pop().unwrap();
-                    let rhs = tmp.pop().unwrap();
-                    
-                    let (lang_type, lhs, rhs) = implicit_type_cast(
-                        self, 
-                        lhs.value, 
-                        &lhs.lang_type, 
-                        rhs.value, 
-                        &rhs.lang_type,
-                        node
+                Expression::Call(e) => {
+                    let callee = self.translate_expression(&*e.node.callee);
+                    let mut params: Vec<llvm::prelude::LLVMValueRef> = e.node.arguments.iter()
+                        .map(|i| self.translate_expression(i).value)
+                        .collect();
+                        
+                    let v = llvm::core::LLVMBuildCall2(
+                        self.builder(),
+                        callee.lang_type.translate(self),
+                        callee.value,
+                        params.as_mut_ptr(),
+                        params.len() as _,
+                        NOP_STUB
                     );
-                    let lhs = TranslatedValue{value: lhs, lang_type: lang_type.clone()};
-                    let rhs = TranslatedValue{value: rhs, lang_type: lang_type.clone()};
 
-                    match expr.node.operator.node {
-                        BinaryOperator::Index => todo!(),
-                        BinaryOperator::Multiply => self.translate_multiplication(lhs, rhs),
-                        BinaryOperator::Divide => self.translate_division(lhs, rhs),
-                        BinaryOperator::Modulo => self.translate_module(lhs, rhs),
-                        BinaryOperator::Plus => self.translate_addition(lhs, rhs),
-                        BinaryOperator::Minus => self.translate_subtraction(lhs, rhs),
-                        BinaryOperator::ShiftLeft => todo!(),
-                        BinaryOperator::ShiftRight => todo!(),
-                        BinaryOperator::Less =>  self.translate_less(lhs, rhs),
-                        BinaryOperator::Greater => self.translate_greater(lhs, rhs),
-                        BinaryOperator::LessOrEqual => self.translate_less_or_equal(lhs, rhs),
-                        BinaryOperator::GreaterOrEqual => self.translate_greater_or_equal(lhs, rhs),
-                        BinaryOperator::Equals => self.translate_equal(lhs, rhs),
-                        BinaryOperator::NotEquals => self.translate_not_equal(lhs, rhs),
-                        BinaryOperator::BitwiseAnd => self.translate_bitwise_and(lhs, rhs),
-                        BinaryOperator::BitwiseXor => self.translate_bitwise_xor(lhs, rhs),
-                        BinaryOperator::BitwiseOr => self.translate_bitwise_or(lhs, rhs),
-                        BinaryOperator::LogicalOr => {
-                            let ty = Type::new_bool();
-                            let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
-                            let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
-                            let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
-                            let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
+                    TranslatedValue{ value: v, lang_type: callee.lang_type}
+                },
+                // Expression::SizeOf(expr) => {
+                //     self.translate_sizeof(&*expr)
+                // },
+                // Expression::AlignOf(expr) => {
+                //     todo!()
+                // },
+                // Expression::UnaryOperator(expr) => {
+                //     match expr.node.operator.node {
+                //         UnaryOperator::PostIncrement => todo!(),
+                //         UnaryOperator::PostDecrement => todo!(),
+                //         UnaryOperator::PreIncrement => todo!(),
+                //         UnaryOperator::PreDecrement => todo!(),
+                //         UnaryOperator::Address => todo!(),
+                //         UnaryOperator::Indirection => todo!(),
+                //         UnaryOperator::Plus => todo!(),
+                //         UnaryOperator::Minus => todo!(),
+                //         UnaryOperator::Complement => todo!(),
+                //         UnaryOperator::Negate => todo!(),
+                //         UnaryOperator::SizeOf => todo!(),
+                //     }
+                // },
+                // Expression::Cast(expr)=> {
+                //     // let val = self.translate_expression_tree(expr.expr.as_ref()); 
+                //     // let val = translate_type_cast(self, val.0, &val.1, expr.ty.as_ref());
+                //     // (val, expr.ty.as_ref().to_owned())
+                //     todo!()
+                // },
+                // Expression::BinaryOperator(expr) => {
+                //     let lhs = tmp.pop().unwrap();
+                //     let rhs = tmp.pop().unwrap();
+                    
+                //     let (lang_type, lhs, rhs) = implicit_type_cast(
+                //         self, 
+                //         lhs.value, 
+                //         &lhs.lang_type, 
+                //         rhs.value, 
+                //         &rhs.lang_type,
+                //         node
+                //     );
+                //     let lhs = TranslatedValue{value: lhs, lang_type: lang_type.clone()};
+                //     let rhs = TranslatedValue{value: rhs, lang_type: lang_type.clone()};
 
-                            self.translate_logical_or(lhs, rhs)
-                        },
-                        BinaryOperator::LogicalAnd => {
-                            let ty = Type::new_bool();
-                            let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
-                            let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
-                            let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
-                            let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
+                //     match expr.node.operator.node {
+                //         BinaryOperator::Index => todo!(),
+                //         BinaryOperator::Multiply => self.translate_multiplication(lhs, rhs),
+                //         BinaryOperator::Divide => self.translate_division(lhs, rhs),
+                //         BinaryOperator::Modulo => self.translate_module(lhs, rhs),
+                //         BinaryOperator::Plus => self.translate_addition(lhs, rhs),
+                //         BinaryOperator::Minus => self.translate_subtraction(lhs, rhs),
+                //         BinaryOperator::ShiftLeft => todo!(),
+                //         BinaryOperator::ShiftRight => todo!(),
+                //         BinaryOperator::Less =>  self.translate_less(lhs, rhs),
+                //         BinaryOperator::Greater => self.translate_greater(lhs, rhs),
+                //         BinaryOperator::LessOrEqual => self.translate_less_or_equal(lhs, rhs),
+                //         BinaryOperator::GreaterOrEqual => self.translate_greater_or_equal(lhs, rhs),
+                //         BinaryOperator::Equals => self.translate_equal(lhs, rhs),
+                //         BinaryOperator::NotEquals => self.translate_not_equal(lhs, rhs),
+                //         BinaryOperator::BitwiseAnd => self.translate_bitwise_and(lhs, rhs),
+                //         BinaryOperator::BitwiseXor => self.translate_bitwise_xor(lhs, rhs),
+                //         BinaryOperator::BitwiseOr => self.translate_bitwise_or(lhs, rhs),
+                //         BinaryOperator::LogicalOr => {
+                //             let ty = Type::new_bool();
+                //             let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
+                //             let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
+                //             let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
+                //             let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
 
-                            self.translate_logical_and(lhs, rhs)
-                        },
-                        BinaryOperator::Assign => todo!(),
-                        BinaryOperator::AssignMultiply => todo!(),
-                        BinaryOperator::AssignDivide => todo!(),
-                        BinaryOperator::AssignModulo => todo!(),
-                        BinaryOperator::AssignPlus => todo!(),
-                        BinaryOperator::AssignMinus => todo!(),
-                        BinaryOperator::AssignShiftLeft => todo!(),
-                        BinaryOperator::AssignShiftRight => todo!(),
-                        BinaryOperator::AssignBitwiseAnd => todo!(),
-                        BinaryOperator::AssignBitwiseXor => todo!(),
-                        BinaryOperator::AssignBitwiseOr => todo!(),
-                    }
-                },
-                Expression::Conditional(expr) => {
-                    let condition = tmp.pop().unwrap();
-                    let on_success = tmp.pop().unwrap();
-                    let on_failure = tmp.pop().unwrap();
-                    todo!()
-                },
-                Expression::Comma(_) => { 
-                    todo!()
-                },
-                Expression::OffsetOf(_) => {
-                    todo!()
-                },
+                //             self.translate_logical_or(lhs, rhs)
+                //         },
+                //         BinaryOperator::LogicalAnd => {
+                //             let ty = Type::new_bool();
+                //             let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
+                //             let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
+                //             let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
+                //             let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
+
+                //             self.translate_logical_and(lhs, rhs)
+                //         },
+                //         BinaryOperator::Assign => todo!(),
+                //         BinaryOperator::AssignMultiply => todo!(),
+                //         BinaryOperator::AssignDivide => todo!(),
+                //         BinaryOperator::AssignModulo => todo!(),
+                //         BinaryOperator::AssignPlus => todo!(),
+                //         BinaryOperator::AssignMinus => todo!(),
+                //         BinaryOperator::AssignShiftLeft => todo!(),
+                //         BinaryOperator::AssignShiftRight => todo!(),
+                //         BinaryOperator::AssignBitwiseAnd => todo!(),
+                //         BinaryOperator::AssignBitwiseXor => todo!(),
+                //         BinaryOperator::AssignBitwiseOr => todo!(),
+                //     }
+                // },
+                // Expression::Conditional(expr) => {
+                //     let condition = tmp.pop().unwrap();
+                //     let on_success = tmp.pop().unwrap();
+                //     let on_failure = tmp.pop().unwrap();
+                //     todo!()
+                // },
+                // Expression::Comma(_) => { 
+                //     todo!()
+                // },
+                // Expression::OffsetOf(_) => {
+                //     todo!()
+                // },
                 _ => todo!()
             }
         }

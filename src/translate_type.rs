@@ -98,11 +98,13 @@ impl Type {
                         )
                     }
                 },
+                DerivedType::Pointer(ty) => {
+                    let val = ty.0.translate(translator);
+                    unsafe { 
+                        llvm::core::LLVMPointerType(val, 0) 
+                    }
+                },
                 _ => todo!()
-                // Pointer(ty) => {
-                //     let elem_type = self.get_generated(ty.referent_type.as_ref());
-                //     unsafe { llvm::core::LLVMPointerType(elem_type, 0) }
-                // }
             }
         };
 
