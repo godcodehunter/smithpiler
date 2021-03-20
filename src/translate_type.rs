@@ -88,7 +88,9 @@ impl Type {
                 //     unsafe { llvm::core::LLVMIntTypeInContext(self.context, bitsize) }
                 // },
                 DerivedType::Function(ty) => {
-                    let mut params: Vec<llvm::prelude::LLVMTypeRef> = ty.params.iter().map(|i| i.translate(translator)).collect();
+                    let mut params: Vec<llvm::prelude::LLVMTypeRef> = ty.params.iter()
+                        .map(|i| i.translate(translator))
+                        .collect();
                     unsafe {
                         llvm::core::LLVMFunctionType(
                             ty.returned_type.translate(translator),

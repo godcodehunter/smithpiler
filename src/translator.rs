@@ -37,6 +37,7 @@ pub trait BaseTranslator<'ast> {
     /// Update variable and return true otherwise if variable not exist return false
     fn update_variable(&mut self, identifier: &'ast Identifier, value: TranslatedValue);
     fn create_variable(&mut self, identifier: &'ast Identifier, ty: &r#type::Type);
+    fn resolve_typename(&self, identifier: &Identifier) -> Type;
 }
 
 //TODO: temporary placeholder 
@@ -47,8 +48,9 @@ pub struct Translator<'ast> {
     module: llvm::prelude::LLVMModuleRef,
     builder: llvm::prelude::LLVMBuilderRef,
     file: MaybeUninit<SimpleFile<String, &'ast String>>,
-    diagnostics: std::collections::LinkedList<Diagnostic>,
+    pub diagnostics: std::collections::LinkedList<Diagnostic>,
     variables: HashMap<&'ast Identifier, TranslatedValue>,
+    types: HashMap<&'ast Identifier, Type>,
 }
 
 impl<'ast> BaseTranslator<'ast> for Translator<'ast>  {
@@ -58,6 +60,10 @@ impl<'ast> BaseTranslator<'ast> for Translator<'ast>  {
 
     fn resolve_variable(&self, identifier: &Identifier) -> TranslatedValue {
         self.variables.get(identifier).unwrap().clone()
+    }
+
+    fn resolve_typename(&self, identifier: &Identifier) -> Type {
+        self.types.get(identifier).unwrap().clone()
     }
 
     fn update_variable(&mut self, identifier: &'ast Identifier, value: TranslatedValue) {
@@ -78,6 +84,7 @@ impl<'ast> Translator<'ast> {
             file: MaybeUninit::uninit(),
             diagnostics: Default::default(),
             variables: Default::default(),
+            types: Default::default(),
         }
     }
     
@@ -209,10 +216,9 @@ impl<'ast> Translator<'ast> {
         let mut variadic = false;
         let identifier: &Identifier;
         let mut params = Vec::<(&lang_c::ast::Identifier, Type)>::new();
-        let ret_type: llvm::prelude::LLVMTypeRef;
         
         &function_definition.node.specifiers;
-        let ret_type = Type::new_signed_int().translate(self);
+        let ret_type = Type::new_void();
 
         if let DeclaratorKind::Identifier(ident) = &function_definition.node.declarator.node.kind.node {
             unsafe {
@@ -299,34 +305,33 @@ impl<'ast> Translator<'ast> {
             _ => unreachable!()
         }
 
-        let mut p = params.iter().map(|i| i.1.translate(self) ).collect::<Vec<llvm::prelude::LLVMTypeRef>>();
+        let mut p: Vec<Type> = params.iter().map(|i| i.1.clone()).collect();
         unsafe {
-            let func_type = LLVMFunctionType(
-                ret_type,
-                p.as_mut_ptr(),
-                params.len() as _,
-                variadic as _,
-            );
+            let f_t = Type::new_function(ret_type.clone(), p, variadic);
             let function = LLVMAddFunction(
                 self.module, 
                 CString::new(identifier.name.clone().into_bytes()).unwrap().as_ptr(), 
-                func_type
+                f_t.translate(self)
             );
         
-            let block = LLVMAppendBasicBlockInContext(
-                self.context, 
+            let block = LLVMAppendBasicBlock(
                 function, 
                 b"body\0".as_ptr() as _,
             );
 
-            self.update_variable(identifier, TranslatedValue{value: function, lang_type: Type::new_signed_int()});
+            self.update_variable(identifier, TranslatedValue{value: function, lang_type: f_t.clone()});
             for i in params.into_iter().enumerate() {
                 let p = LLVMGetParam(function, i.0 as _);
-                self.update_variable(i.1.0, TranslatedValue{value: p, lang_type: Type::new_signed_int()});
+                self.update_variable(i.1.0, TranslatedValue{value: p, lang_type: f_t.clone()});
             }
 
             LLVMPositionBuilderAtEnd(self.builder(), block);
-            self.translate_statement(&function_definition.node.statement, Type::new_signed_int()); 
+            if let Statement::Compound(compound) = &function_definition.node.statement.node {
+                self.translate_compound_statement(compound, ret_type); 
+            } else {
+                // NOTE: Parser guarantees that statement is compound statement
+                unreachable!()
+            }
         }
     }
 
@@ -368,9 +373,9 @@ impl<'ast> Translator<'ast> {
     pub fn translate(&mut self, parse_result: &'ast driver::Parse, path: String) -> llvm::prelude::LLVMModuleRef {
         unsafe {
             self.file.as_mut_ptr().write(SimpleFile::new(path.clone(), &parse_result.source));
-            self.context = LLVMContextCreate();
+            // self.context = LLVMContextCreate();
             self.module = LLVMModuleCreateWithName(path.as_bytes().as_ptr() as _);
-            self.builder = LLVMCreateBuilderInContext(self.context);
+            self.builder = LLVMCreateBuilder();
         }
 
         for decl in &parse_result.unit.0 {

@@ -122,92 +122,108 @@ impl<'a> Translator<'a> {
         todo!()
     }
 
-    pub fn translate_statement(&mut self, stmt: &'a Node<Statement>, ret_type: r#type::Type) {
-        match &stmt.node {
-            Statement::Compound(block) => {
-                let mut is_has_return = false;
-                
-                let mut iter = block.into_iter();
-                while let Some(item) = iter.next() {
-                    match &item.node {
-                        BlockItem::Declaration(decl) => {
-                            self.translate_declaration(decl);
-                        }
-                        BlockItem::StaticAssert(_) => {
-                            todo!()
-                        }
-                        BlockItem::Statement(stmt) => {
-                            let last = block.last().unwrap();
-                            match &stmt.node {
-                                Statement::Return(_) if item != last => {
-                                    is_has_return = true;
+    fn translate_return(&mut self, expr: &Option<Box<Node<Expression>>>, ret_type: r#type::Type) {
+        let mut val: llvm::prelude::LLVMValueRef;
+        if expr.is_some() {
+            use codespan_reporting::diagnostic::{self, Label};
 
-                                    let diagnostic = unreachable_after_return(
-                                        stmt, 
-                                        iter.next().unwrap().span.start..last.span.end);
-                                    self.add_diagnostic(diagnostic);
-                                    break;
-                                },
-                                Statement::Return(expr) => {
-                                    is_has_return = true;
-                                    unsafe {
-                                        let mut val: TranslatedValue;
-                                        if expr.is_some() {
-                                            val = self.translate_expression(expr.as_ref().unwrap());
-                                        } else {
-                                            todo!();
-                                        }
-                                        let val2 = translate_type_cast(self, val.value, &val.lang_type, &ret_type, expr.as_ref().unwrap());
-                                        llvm::core::LLVMBuildRet(self.builder(), val2);
-                                    }
-                                },
-                                Statement::Expression(Some(ref expr)) => {
-                                    self.translate_expression(expr);
-                                },
-                                _ => todo!()
-                            }
-                        }
-                    } 
+            if let r#type::Type::Fundamental(r#type::Fundamental::Void) = ret_type {
+                self.diagnostics.push_back(Diagnostic::error()
+                .with_message("return have expression on function with void return type")
+                .with_labels(vec![
+                    Label::primary((), expr.as_ref().unwrap().span.start..expr.as_ref().unwrap().span.end)
+                ]));
+                val = std::ptr::null_mut();
+            } else {
+                let v = self.translate_expression(expr.as_ref().unwrap());
+                let val2 = translate_type_cast(self, v.value, &v.lang_type, &ret_type, expr.as_ref().unwrap());
+                val = v.value;
+            }
+
+        } else {
+            if let r#type::Type::Fundamental(r#type::Fundamental::Void) = ret_type {
+                val = std::ptr::null_mut();
+            } else {
+                unsafe {
+                    let r_type = ret_type.translate(self);
+                    let v1 = llvm::core::LLVMBuildAlloca(self.builder(), r_type, b"test\0".as_ptr() as _);
+                    let v2 = llvm::core::LLVMBuildLoad2(self.builder(), r_type, v1, b"some\0".as_ptr() as _);
+                    val = v2;
                 }
-                if !is_has_return {
-                    unsafe {
-                        let r_type = ret_type.translate(self);
-                        let value = llvm::core::LLVMBuildAlloca(self.builder(), r_type, b"test\0".as_ptr() as _);
-                        let value2 = llvm::core::LLVMBuildLoad2(self.builder(), r_type, value, b"some\0".as_ptr() as _);
-                        llvm::core::LLVMBuildRet(self.builder(), value2);
+            }
+        }
+        
+        unsafe {
+            llvm::core::LLVMBuildRet(self.builder(), val);
+        }
+    }
+
+    pub fn translate_compound_statement(&mut self, stmt: &'a Vec<Node<BlockItem>>, ret_type: r#type::Type) {
+        let mut iter = stmt.into_iter();
+        while let Some(item) = iter.next() {
+            match &item.node {
+                BlockItem::Declaration(decl) => {
+                    self.translate_declaration(decl);
+                }
+                BlockItem::StaticAssert(_) => {
+                    todo!()
+                }
+                BlockItem::Statement(node) => {
+                    match &node.node {
+                        Statement::Return(expr) => {
+                            let last = stmt.last().unwrap();
+                            if item != last {
+                                let next = iter.next().unwrap();
+                                let diagnostic = unreachable_after_return(
+                                    node, 
+                                    next.span.start..last.span.end,
+                                );
+                                self.add_diagnostic(diagnostic);
+                            }
+
+                            self.translate_return(expr, ret_type);
+                            return;
+                        },
+                        Statement::Expression(Some(ref expr)) => {
+                            self.translate_expression(expr);
+                        },
+                        _ => todo!()
                     }
                 }
             }
-            // Statement::Labeled(_) => {}
-            // Statement::If(stmt) => {
-            //     self.translate_brunch(stmt);
-            // }
-            // Statement::Switch(stmt) => {
-            //     self.generate_switch(stmt);
-            // }
-            // Statement::While(stmt) => {
-            //     self.generate_while(stmt)
-            // }
-            // Statement::DoWhile(stmt) => {
-            //     self.generate_dowhile(stmt);
-            // }
-            // Statement::For(stmt) => {
-            //     self.generate_for(stmt);
-            // }
-            // Statement::Goto(_) => {
-            //     //TODO: for, while or do-while
-            //     todo!() 
-            // }
-            // Statement::Continue => {
-            //     //TODO: for, while or do-while
-            //     todo!() 
-            // }
-            // Statement::Break => {
-            //     //TODO: for, while or do-while switch 
-            //     todo!() 
-            // }
-            // Statement::Asm(_) => {}
-            _ => todo!()
-        }
+        }    
+        self.translate_return(&None, ret_type); 
+        // match &stmt.node {
+            
+        //     // Statement::Labeled(_) => {}
+        //     // Statement::If(stmt) => {
+        //     //     self.translate_brunch(stmt);
+        //     // }
+        //     // Statement::Switch(stmt) => {
+        //     //     self.generate_switch(stmt);
+        //     // }
+        //     // Statement::While(stmt) => {
+        //     //     self.generate_while(stmt)
+        //     // }
+        //     // Statement::DoWhile(stmt) => {
+        //     //     self.generate_dowhile(stmt);
+        //     // }
+        //     // Statement::For(stmt) => {
+        //     //     self.generate_for(stmt);
+        //     // }
+        //     // Statement::Goto(_) => {
+        //     //     //TODO: for, while or do-while
+        //     //     todo!() 
+        //     // }
+        //     // Statement::Continue => {
+        //     //     //TODO: for, while or do-while
+        //     //     todo!() 
+        //     // }
+        //     // Statement::Break => {
+        //     //     //TODO: for, while or do-while switch 
+        //     //     todo!() 
+        //     // }
+        //     // Statement::Asm(_) => {}
+        //     _ => todo!()
     }
 }

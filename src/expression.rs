@@ -2,6 +2,7 @@ use lang_c::{ast::*, span::Node};
 use crate::{translator::{BaseTranslator, NOP_STUB, TranslatedValue, Translator}, type_cast::{implicit_type_cast, translate_type_cast}};
 use crate::r#type::*;
 use std::collections::VecDeque;
+use llvm::core::*;
 
 impl<'ast> Translator<'ast> {
     fn translate_greater(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
@@ -10,7 +11,7 @@ impl<'ast> Translator<'ast> {
             let value: llvm::prelude::LLVMValueRef;
             if lhs.lang_type.is_integer() {
                 let predicate = if lhs.lang_type.is_signed() {LLVMIntSGT} else {LLVMIntUGT};
-                value = llvm::core::LLVMBuildICmp(
+                value = LLVMBuildICmp(
                     self.builder(), 
                     predicate, 
                     lhs.value, 
@@ -18,7 +19,7 @@ impl<'ast> Translator<'ast> {
                     NOP_STUB
                 );
             } else {
-                value = llvm::core::LLVMBuildFCmp(
+                value = LLVMBuildFCmp(
                     self.builder(), 
                     llvm::LLVMRealPredicate::LLVMRealOGT, 
                     lhs.value, 
@@ -36,7 +37,7 @@ impl<'ast> Translator<'ast> {
             let value: llvm::prelude::LLVMValueRef;
             if lhs.lang_type.is_integer() {
                 let predicate = if lhs.lang_type.is_signed() {LLVMIntSLE} else {LLVMIntULE};
-                value = llvm::core::LLVMBuildICmp(
+                value = LLVMBuildICmp(
                     self.builder(), 
                     predicate, 
                     lhs.value, 
@@ -44,7 +45,7 @@ impl<'ast> Translator<'ast> {
                     NOP_STUB
                 );
             } else {
-                value = llvm::core::LLVMBuildFCmp(
+                value = LLVMBuildFCmp(
                     self.builder(), 
                     llvm::LLVMRealPredicate::LLVMRealOLE, 
                     lhs.value, 
@@ -62,7 +63,7 @@ impl<'ast> Translator<'ast> {
             let value: llvm::prelude::LLVMValueRef;
             if lhs.lang_type.is_integer() {
                 let predicate = if lhs.lang_type.is_signed() {LLVMIntSLT} else {LLVMIntULT};
-                value = llvm::core::LLVMBuildICmp(
+                value = LLVMBuildICmp(
                     self.builder(), 
                     predicate, 
                     lhs.value, 
@@ -70,7 +71,7 @@ impl<'ast> Translator<'ast> {
                     NOP_STUB
                 );
             } else {
-                value = llvm::core::LLVMBuildFCmp(
+                value = LLVMBuildFCmp(
                     self.builder(), 
                     llvm::LLVMRealPredicate::LLVMRealOLT, 
                     lhs.value, 
@@ -88,7 +89,7 @@ impl<'ast> Translator<'ast> {
             let value: llvm::prelude::LLVMValueRef;
             if lhs.lang_type.is_integer() {
                 let predicate = if lhs.lang_type.is_signed() {LLVMIntSGE} else {LLVMIntUGE};
-                value = llvm::core::LLVMBuildICmp(
+                value = LLVMBuildICmp(
                     self.builder(), 
                     predicate, 
                     lhs.value, 
@@ -96,7 +97,7 @@ impl<'ast> Translator<'ast> {
                     NOP_STUB
                 );
             } else {
-                value = llvm::core::LLVMBuildFCmp(
+                value = LLVMBuildFCmp(
                     self.builder(), 
                     llvm::LLVMRealPredicate::LLVMRealOGE, 
                     lhs.value, 
@@ -112,7 +113,7 @@ impl<'ast> Translator<'ast> {
         unsafe {
             let value: llvm::prelude::LLVMValueRef;
             if lhs.lang_type.is_integer() {
-                value = llvm::core::LLVMBuildICmp(
+                value = LLVMBuildICmp(
                     self.builder(), 
                     llvm::LLVMIntPredicate::LLVMIntEQ, 
                     lhs.value, 
@@ -120,7 +121,7 @@ impl<'ast> Translator<'ast> {
                     NOP_STUB
                 )
             } else {
-                value = llvm::core::LLVMBuildFCmp(
+                value = LLVMBuildFCmp(
                     self.builder(), 
                     llvm::LLVMRealPredicate::LLVMRealOEQ, 
                     lhs.value, 
@@ -136,7 +137,7 @@ impl<'ast> Translator<'ast> {
         unsafe {
             let value: llvm::prelude::LLVMValueRef;
             if lhs.lang_type.is_integer() {
-                value = llvm::core::LLVMBuildICmp(
+                value = LLVMBuildICmp(
                     self.builder(), 
                     llvm::LLVMIntPredicate::LLVMIntNE, 
                     lhs.value, 
@@ -144,7 +145,7 @@ impl<'ast> Translator<'ast> {
                     NOP_STUB
                 );
             } else {
-                value = llvm::core::LLVMBuildFCmp(
+                value = LLVMBuildFCmp(
                     self.builder(), 
                     llvm::LLVMRealPredicate::LLVMRealUNE, 
                     lhs.value, 
@@ -159,14 +160,14 @@ impl<'ast> Translator<'ast> {
     fn translate_addition(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
         unsafe {
             let value = if lhs.lang_type.is_integer() {
-                    llvm::core::LLVMBuildAdd(
+                    LLVMBuildAdd(
                     self.builder(), 
                     lhs.value, 
                     rhs.value, 
                     NOP_STUB
                 ) 
             } else if lhs.lang_type.is_real() {
-                llvm::core::LLVMBuildFAdd(
+                LLVMBuildFAdd(
                     self.builder(), 
                     lhs.value, 
                     rhs.value, 
@@ -181,7 +182,7 @@ impl<'ast> Translator<'ast> {
 
     fn translate_subtraction(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
         unsafe {
-            let value = llvm::core::LLVMBuildSub(
+            let value = LLVMBuildSub(
                 self.builder(), 
                 lhs.value, 
                 rhs.value, 
@@ -194,14 +195,14 @@ impl<'ast> Translator<'ast> {
     fn translate_multiplication(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
         unsafe {
             let value = if lhs.lang_type.is_integer() {
-                llvm::core::LLVMBuildMul(
+                LLVMBuildMul(
                     self.builder(), 
                     lhs.value,
                     rhs.value,
                     NOP_STUB
                 )
             } else if lhs.lang_type.is_real() {
-                llvm::core::LLVMBuildFMul(self.builder(), lhs.value, rhs.value, NOP_STUB)
+                LLVMBuildFMul(self.builder(), lhs.value, rhs.value, NOP_STUB)
             } else {
                 panic!()
             };
@@ -220,17 +221,17 @@ impl<'ast> Translator<'ast> {
     fn create_one_of_same_type(ty: &crate::r#type::Type) -> llvm::prelude::LLVMValueRef {
         todo!()
         // llvm::LLVMTypeKind::LLVMIntegerTypeKind => {
-        //     llvm::core::LLVMConstInt(ty, 1, ty.is_signed() as _)
+        //     LLVMConstInt(ty, 1, ty.is_signed() as _)
         // },
         // LLVMFloatTypeKind | LLVMDoubleTypeKind | LLVMX86_FP80TypeKind => {
-        //     llvm::core::LLVMConstReal(ty, 1)
+        //     LLVMConstReal(ty, 1)
         // },
     }
 
     fn translate_increment(&mut self, mut value: TranslatedValue) -> TranslatedValue {
         let one = Self::create_one_of_same_type(&value.lang_type);
         unsafe {
-            value.value = llvm::core::LLVMBuildAdd(
+            value.value = LLVMBuildAdd(
                 self.builder(), 
                 value.value, 
                 one, 
@@ -243,7 +244,7 @@ impl<'ast> Translator<'ast> {
     fn translate_decrement(&mut self, mut value: TranslatedValue) -> TranslatedValue {
         let one = Self::create_one_of_same_type(&value.lang_type);
         unsafe {
-            value.value = llvm::core::LLVMBuildSub(
+            value.value = LLVMBuildSub(
                 self.builder(), 
                 value.value, 
                 one, 
@@ -255,7 +256,7 @@ impl<'ast> Translator<'ast> {
 
     fn translate_bitwise_not(&mut self, mut value: TranslatedValue) -> TranslatedValue {
         unsafe {
-            value.value = llvm::core::LLVMBuildNot(
+            value.value = LLVMBuildNot(
                 self.builder(), 
                 value.value, 
                 NOP_STUB
@@ -266,7 +267,7 @@ impl<'ast> Translator<'ast> {
     
     fn translate_bitwise_and(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
         unsafe {
-            let value= llvm::core::LLVMBuildAnd(
+            let value= LLVMBuildAnd(
                 self.builder(), 
                 lhs.value, 
                 rhs.value, 
@@ -283,28 +284,28 @@ impl<'ast> Translator<'ast> {
 
     fn translate_bitwise_or(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
         unsafe {
-            let value = llvm::core::LLVMBuildOr(self.builder(), lhs.value, rhs.value, NOP_STUB);
+            let value = LLVMBuildOr(self.builder(), lhs.value, rhs.value, NOP_STUB);
             TranslatedValue{value, lang_type: lhs.lang_type}
         }
     }
 
     fn translate_negation(&mut self, mut value: TranslatedValue) -> TranslatedValue {
         unsafe {
-            value.value = llvm::core::LLVMBuildNeg(self.builder(), value.value, NOP_STUB);
+            value.value = LLVMBuildNeg(self.builder(), value.value, NOP_STUB);
             value
         }
     }
 
     fn translate_logical_not(&mut self, mut value: TranslatedValue) -> TranslatedValue {
         unsafe {
-            value.value = llvm::core::LLVMBuildNot(self.builder(), value.value, NOP_STUB);
+            value.value = LLVMBuildNot(self.builder(), value.value, NOP_STUB);
             value
         }
     }
 
     fn translate_logical_or(&mut self, lhs: TranslatedValue, rhs: TranslatedValue) -> TranslatedValue {
         unsafe  {
-            let value = llvm::core::LLVMBuildOr(self.builder(), lhs.value, rhs.value, NOP_STUB);
+            let value = LLVMBuildOr(self.builder(), lhs.value, rhs.value, NOP_STUB);
             TranslatedValue{value, lang_type: lhs.lang_type}
         }
     }
@@ -315,7 +316,7 @@ impl<'ast> Translator<'ast> {
         // let rhs = translate_type_cast(self, rhs.0, &rhs.1, &target_ty);
 
         unsafe {
-            let value= llvm::core::LLVMBuildAnd(
+            let value= LLVMBuildAnd(
                 self.builder(), 
                 lhs.value, 
                 rhs.value, 
@@ -328,7 +329,7 @@ impl<'ast> Translator<'ast> {
     fn translate_sizeof(&mut self, node: &Node<TypeName>)  -> TranslatedValue {
         todo!()
         // unsafe {
-        //     llvm::core::LLVMSizeOf(ty);
+        //     LLVMSizeOf(ty);
         // }
     }
 
@@ -342,7 +343,7 @@ impl<'ast> Translator<'ast> {
                 unsafe { 
                     //TODO: more conversion
                     let lang_type = Type::new_signed_int(); 
-                    let value = llvm::core::LLVMConstInt(
+                    let value = LLVMConstInt(
                         lang_type.translate(self),
                         lit.number.parse::<i32>().unwrap() as _, 
                         true as _,
@@ -354,7 +355,7 @@ impl<'ast> Translator<'ast> {
                 //TODO: more conversion 
                 unsafe { 
                     let lang_type = Type::new_float();
-                    let value = llvm::core::LLVMConstReal(
+                    let value = LLVMConstReal(
                         lang_type.translate(self), 
                         lit.number.parse::<f32>().unwrap() as _, 
                     );
@@ -365,7 +366,7 @@ impl<'ast> Translator<'ast> {
                 //TODO: check out of range 0-255
                 unsafe {
                     let lang_type = Type::new_unsigned_char(); 
-                    let value = llvm::core::LLVMConstInt(
+                    let value = LLVMConstInt(
                         lang_type.translate(self),
                         *lit.as_ptr() as _,
                         true as _,
@@ -381,13 +382,12 @@ impl<'ast> Translator<'ast> {
             let char_ty = Type::new_unsigned_char();
             let ty = Type::Derived(DerivedType::Pointer(PointerType(char_ty.into())));
 
-            let value = llvm::core::LLVMBuildGlobalStringPtr(
+            let value = LLVMBuildGlobalStringPtr(
                 self.builder(),
                 lit.node[0].as_ptr() as _, 
                 NOP_STUB
             );
-            llvm::core::LLVMDumpType(llvm::core::LLVMTypeOf(value));
-            println!();
+         
             TranslatedValue{value, lang_type: ty} 
         }
     }
@@ -407,131 +407,135 @@ impl<'ast> Translator<'ast> {
                     self.translate_string_literal(&*lit)
                 },
                 Expression::GenericSelection(_) => todo!(),
-                Expression::CompoundLiteral(_) => todo!(),
+                Expression::CompoundLiteral(node) => todo!(),
                 Expression::Member(_) => {
                     todo!()
                 },
-                Expression::Call(e) => {
-                    let callee = self.translate_expression(&*e.node.callee);
-                    let mut params: Vec<llvm::prelude::LLVMValueRef> = e.node.arguments.iter()
+                Expression::Call(node) => {
+                    let callee = self.translate_expression(&*node.node.callee);
+                    dbg!(callee.lang_type.clone());
+                    let mut params: Vec<llvm::prelude::LLVMValueRef> = node.node.arguments.iter()
                         .map(|i| self.translate_expression(i).value)
                         .collect();
-                        
-                    let v = llvm::core::LLVMBuildCall2(
+    
+                    let v = LLVMBuildCall2(
                         self.builder(),
                         callee.lang_type.translate(self),
                         callee.value,
                         params.as_mut_ptr(),
                         params.len() as _,
-                        NOP_STUB
+                        b"\0".as_ptr() as _ //TODO: for void return type this should be empty c str
                     );
 
                     TranslatedValue{ value: v, lang_type: callee.lang_type}
                 },
-                // Expression::SizeOf(expr) => {
+                Expression::SizeOf(expr) => {
                 //     self.translate_sizeof(&*expr)
-                // },
-                // Expression::AlignOf(expr) => {
-                //     todo!()
-                // },
-                // Expression::UnaryOperator(expr) => {
-                //     match expr.node.operator.node {
-                //         UnaryOperator::PostIncrement => todo!(),
-                //         UnaryOperator::PostDecrement => todo!(),
-                //         UnaryOperator::PreIncrement => todo!(),
-                //         UnaryOperator::PreDecrement => todo!(),
-                //         UnaryOperator::Address => todo!(),
-                //         UnaryOperator::Indirection => todo!(),
-                //         UnaryOperator::Plus => todo!(),
-                //         UnaryOperator::Minus => todo!(),
-                //         UnaryOperator::Complement => todo!(),
-                //         UnaryOperator::Negate => todo!(),
-                //         UnaryOperator::SizeOf => todo!(),
-                //     }
-                // },
-                // Expression::Cast(expr)=> {
+                    todo!()
+                },
+                Expression::AlignOf(expr) => {
+                    todo!()
+                },
+                Expression::UnaryOperator(expr) => {
+                    match expr.node.operator.node {
+                        UnaryOperator::PostIncrement => todo!(),
+                        UnaryOperator::PostDecrement => todo!(),
+                        UnaryOperator::PreIncrement => todo!(),
+                        UnaryOperator::PreDecrement => todo!(),
+                        UnaryOperator::Address => todo!(),
+                        UnaryOperator::Indirection => todo!(),
+                        UnaryOperator::Plus => todo!(),
+                        UnaryOperator::Minus => todo!(),
+                        UnaryOperator::Complement => todo!(),
+                        UnaryOperator::Negate => todo!(),
+                        UnaryOperator::SizeOf => todo!(),
+                    }
+                },
+                Expression::Cast(expr)=> {
                 //     // let val = self.translate_expression_tree(expr.expr.as_ref()); 
                 //     // let val = translate_type_cast(self, val.0, &val.1, expr.ty.as_ref());
                 //     // (val, expr.ty.as_ref().to_owned())
-                //     todo!()
-                // },
-                // Expression::BinaryOperator(expr) => {
-                //     let lhs = tmp.pop().unwrap();
-                //     let rhs = tmp.pop().unwrap();
+                    todo!()
+                },
+                Expression::BinaryOperator(node) => {
+                    let lhs = self.translate_expression(&node.node.lhs);
+                    let rhs = self.translate_expression(&node.node.rhs);
                     
-                //     let (lang_type, lhs, rhs) = implicit_type_cast(
-                //         self, 
-                //         lhs.value, 
-                //         &lhs.lang_type, 
-                //         rhs.value, 
-                //         &rhs.lang_type,
-                //         node
-                //     );
-                //     let lhs = TranslatedValue{value: lhs, lang_type: lang_type.clone()};
-                //     let rhs = TranslatedValue{value: rhs, lang_type: lang_type.clone()};
+                    let (lang_type, lhs, rhs) = implicit_type_cast(
+                        self, 
+                        lhs.value, 
+                        &lhs.lang_type, 
+                        rhs.value, 
+                        &rhs.lang_type,
+                        expr
+                    );
+                    let lhs = TranslatedValue{value: lhs, lang_type: lang_type.clone()};
+                    let rhs = TranslatedValue{value: rhs, lang_type: lang_type.clone()};
 
-                //     match expr.node.operator.node {
-                //         BinaryOperator::Index => todo!(),
-                //         BinaryOperator::Multiply => self.translate_multiplication(lhs, rhs),
-                //         BinaryOperator::Divide => self.translate_division(lhs, rhs),
-                //         BinaryOperator::Modulo => self.translate_module(lhs, rhs),
-                //         BinaryOperator::Plus => self.translate_addition(lhs, rhs),
-                //         BinaryOperator::Minus => self.translate_subtraction(lhs, rhs),
-                //         BinaryOperator::ShiftLeft => todo!(),
-                //         BinaryOperator::ShiftRight => todo!(),
-                //         BinaryOperator::Less =>  self.translate_less(lhs, rhs),
-                //         BinaryOperator::Greater => self.translate_greater(lhs, rhs),
-                //         BinaryOperator::LessOrEqual => self.translate_less_or_equal(lhs, rhs),
-                //         BinaryOperator::GreaterOrEqual => self.translate_greater_or_equal(lhs, rhs),
-                //         BinaryOperator::Equals => self.translate_equal(lhs, rhs),
-                //         BinaryOperator::NotEquals => self.translate_not_equal(lhs, rhs),
-                //         BinaryOperator::BitwiseAnd => self.translate_bitwise_and(lhs, rhs),
-                //         BinaryOperator::BitwiseXor => self.translate_bitwise_xor(lhs, rhs),
-                //         BinaryOperator::BitwiseOr => self.translate_bitwise_or(lhs, rhs),
-                //         BinaryOperator::LogicalOr => {
-                //             let ty = Type::new_bool();
-                //             let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
-                //             let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
-                //             let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
-                //             let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
+                    match node.node.operator.node {
+                        BinaryOperator::Index => todo!(),
+                        BinaryOperator::Multiply => self.translate_multiplication(lhs, rhs),
+                        BinaryOperator::Divide => self.translate_division(lhs, rhs),
+                        BinaryOperator::Modulo => self.translate_module(lhs, rhs),
+                        BinaryOperator::Plus => self.translate_addition(lhs, rhs),
+                        BinaryOperator::Minus => self.translate_subtraction(lhs, rhs),
+                        BinaryOperator::ShiftLeft => todo!(),
+                        BinaryOperator::ShiftRight => todo!(),
+                        BinaryOperator::Less =>  self.translate_less(lhs, rhs),
+                        BinaryOperator::Greater => self.translate_greater(lhs, rhs),
+                        BinaryOperator::LessOrEqual => self.translate_less_or_equal(lhs, rhs),
+                        BinaryOperator::GreaterOrEqual => self.translate_greater_or_equal(lhs, rhs),
+                        BinaryOperator::Equals => self.translate_equal(lhs, rhs),
+                        BinaryOperator::NotEquals => self.translate_not_equal(lhs, rhs),
+                        BinaryOperator::BitwiseAnd => self.translate_bitwise_and(lhs, rhs),
+                        BinaryOperator::BitwiseXor => self.translate_bitwise_xor(lhs, rhs),
+                        BinaryOperator::BitwiseOr => self.translate_bitwise_or(lhs, rhs),
+                        BinaryOperator::LogicalOr => todo!(),
+                            // let ty = Type::new_bool();
+                            // let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
+                            // let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
+                            // let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
+                            // let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
 
-                //             self.translate_logical_or(lhs, rhs)
-                //         },
-                //         BinaryOperator::LogicalAnd => {
-                //             let ty = Type::new_bool();
-                //             let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
-                //             let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
-                //             let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
-                //             let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
+                            // self.translate_logical_or(lhs, rhs)
+                        BinaryOperator::LogicalAnd => todo!(),
+                            // let ty = Type::new_bool();
+                            // let lhs = translate_type_cast(self, lhs.value, &lhs.lang_type, &ty, node);
+                            // let rhs = translate_type_cast(self, rhs.value, &rhs.lang_type, &ty, node);
+                            // let lhs = TranslatedValue{value: lhs, lang_type: ty.clone()};
+                            // let rhs = TranslatedValue{value: rhs, lang_type: ty.clone()};
 
-                //             self.translate_logical_and(lhs, rhs)
-                //         },
-                //         BinaryOperator::Assign => todo!(),
-                //         BinaryOperator::AssignMultiply => todo!(),
-                //         BinaryOperator::AssignDivide => todo!(),
-                //         BinaryOperator::AssignModulo => todo!(),
-                //         BinaryOperator::AssignPlus => todo!(),
-                //         BinaryOperator::AssignMinus => todo!(),
-                //         BinaryOperator::AssignShiftLeft => todo!(),
-                //         BinaryOperator::AssignShiftRight => todo!(),
-                //         BinaryOperator::AssignBitwiseAnd => todo!(),
-                //         BinaryOperator::AssignBitwiseXor => todo!(),
-                //         BinaryOperator::AssignBitwiseOr => todo!(),
-                //     }
-                // },
-                // Expression::Conditional(expr) => {
+                            // self.translate_logical_and(lhs, rhs)
+                        BinaryOperator::Assign => todo!(),
+                        BinaryOperator::AssignMultiply => todo!(),
+                        BinaryOperator::AssignDivide => todo!(),
+                        BinaryOperator::AssignModulo => todo!(),
+                        BinaryOperator::AssignPlus => todo!(),
+                        BinaryOperator::AssignMinus => todo!(),
+                        BinaryOperator::AssignShiftLeft => todo!(),
+                        BinaryOperator::AssignShiftRight => todo!(),
+                        BinaryOperator::AssignBitwiseAnd => todo!(),
+                        BinaryOperator::AssignBitwiseXor => todo!(),
+                        BinaryOperator::AssignBitwiseOr => todo!(),
+                    }
+                },
+                Expression::Conditional(node) => {
                 //     let condition = tmp.pop().unwrap();
                 //     let on_success = tmp.pop().unwrap();
                 //     let on_failure = tmp.pop().unwrap();
-                //     todo!()
-                // },
-                // Expression::Comma(_) => { 
-                //     todo!()
-                // },
-                // Expression::OffsetOf(_) => {
-                //     todo!()
-                // },
-                _ => todo!()
+                    todo!()
+                },
+                Expression::Comma(node) => { 
+                    node.iter()
+                        .map(|item| self.translate_expression(item))
+                        .last()
+                        .unwrap()
+                },
+                Expression::OffsetOf(node) => {
+                    todo!()
+                },
+                Expression::VaArg(_) => unimplemented!(),
+                Expression::Statement(_) => unimplemented!(),
             }
         }
     }
