@@ -5,124 +5,240 @@ use std::collections::HashMap;
 use crate::diagnostics::*;
 use crate::type_cast::*;
 use crate::translator::*;
+use llvm::core::*;
+use crate::r#type::Type;
+
+struct StatementTranslator<'ast> {
+    closes_loop: &'ast Node<Statement>,
+}
 
 impl<'a> Translator<'a> {
     /// Generate 'if' brunch or 'if-else', if 'on_false_stmt' present   
     fn translate_brunch(&mut self, stmt: &'a  Node<IfStatement>) {
-        // unsafe {
-        //     let predicate = self.expr_trans().translate(stmt.node.condition.as_ref()); 
-        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let on_true_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let on_false_block = if stmt.node.else_statement.is_some() {
-        //         llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB)
-        //     } else {
-        //         after_block
-        //     };
+        unsafe {
+            let t_v = Self::translate_expression(self, stmt.node.condition.as_ref());
+            let predicate = translate_type_cast(
+                self,
+                t_v.value, 
+                &t_v.lang_type, 
+                &Type::new_bool(), 
+                stmt.node.condition.as_ref()
+            );
+            let after_block = LLVMCreateBasicBlockInContext(self.context, NOP_STUB);
+            LLVMInsertExistingBasicBlockAfterInsertBlock(self.builder(), after_block);
+            let on_true_block = LLVMCreateBasicBlockInContext(self.context, b"on_true\0".as_ptr() as _);
+            LLVMInsertExistingBasicBlockAfterInsertBlock(self.builder(), on_true_block);
+            let on_false_block = if stmt.node.else_statement.is_some() {
+               let v = LLVMCreateBasicBlockInContext(self.context, b"on_false\0".as_ptr() as _);
+               LLVMInsertExistingBasicBlockAfterInsertBlock(self.builder(), v);
+               v
+            } else {
+                after_block
+            };
                 
-        //     llvm::core::LLVMBuildCondBr(self.builder(), predicate, on_true_block, on_false_block);
-        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), on_true_block);
-        //     self.translate_statement(stmt.node.then_statement.as_ref());
-        //     llvm::core::LLVMBuildBr(self.builder(), after_block);
+            LLVMBuildCondBr(self.builder(), predicate, on_true_block, on_false_block);
             
-        //     if stmt.node.else_statement.is_some() {
-        //         llvm::core::LLVMPositionBuilderAtEnd(self.builder(), on_false_block);
-        //         self.translate_statement(stmt.node.else_statement.as_ref().unwrap());
-        //         llvm::core::LLVMBuildBr(self.builder(), after_block);
-        //     }
+            LLVMPositionBuilderAtEnd(self.builder(), on_true_block);
+            self.translate_statement(stmt.node.then_statement.as_ref());
+            LLVMBuildBr(self.builder(), after_block);
             
-        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), after_block);
-        // }
-        todo!()
+            if stmt.node.else_statement.is_some() {
+                LLVMPositionBuilderAtEnd(self.builder(), on_false_block);
+                self.translate_statement(stmt.node.else_statement.as_ref().unwrap());
+                LLVMBuildBr(self.builder(), after_block);
+            }
+            
+            LLVMPositionBuilderAtEnd(self.builder(), after_block);
+        }
     }
 
     fn generate_while(&mut self, stmt: &'a Node<WhileStatement>) {
-        // unsafe {
-        //     let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        unsafe {
+            let prev = LLVMGetInsertBlock(self.builder());
+            let func = LLVMGetBasicBlockParent(prev);
 
-        //     llvm::core::LLVMBuildBr(self.builder(), predicate_block);
-        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
-        //     let predicate = self.expr_trans().translate(stmt.node.expression.as_ref());
-        //     llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
+            let predicate_block = LLVMAppendBasicBlockInContext(self.context, func, b"loop_predicate\0".as_ptr() as _);
+            let body_block = LLVMAppendBasicBlockInContext(self.context, func, b"loop_body\0".as_ptr() as _); 
+            let after_block = LLVMAppendBasicBlockInContext(self.context, func, b"after_loop\0".as_ptr() as _); 
+
+            LLVMBuildBr(self.builder(), predicate_block);
             
-        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-        //     self.translate_statement(stmt.node.statement.as_ref());
-        //     llvm::core::LLVMBuildBr(self.builder(), predicate_block);
-        // }
-        todo!()
+            LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
+            let t_v = Self::translate_expression(self, stmt.node.expression.as_ref());
+            let predicate = translate_type_cast(
+                self,
+                t_v.value, 
+                &t_v.lang_type, 
+                &Type::new_bool(), 
+                stmt.node.expression.as_ref()
+            );
+            LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
+            
+            LLVMPositionBuilderAtEnd(self.builder(), body_block);
+            self.translate_statement(stmt.node.statement.as_ref());
+            LLVMBuildBr(self.builder(), after_block);
+            
+            LLVMPositionBuilderAtEnd(self.builder(), after_block);
+        }
     }
 
     fn generate_dowhile(&mut self, stmt: &'a Node<DoWhileStatement>) {
-        // unsafe {
-        //     let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        unsafe {
+            let prev = LLVMGetInsertBlock(self.builder());
+            let func = LLVMGetBasicBlockParent(prev);
 
-        //     llvm::core::LLVMBuildBr(self.builder(), body_block);
-        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-        //     self.translate_statement(stmt.node.statement.as_ref());
-        //     let predicate = self.expr_trans().translate(stmt.node.expression.as_ref());  
-        //     llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
-        // }
-        todo!()
+            let body_block = LLVMAppendBasicBlockInContext(self.context, func, b"loop_body\0".as_ptr() as _); 
+            let predicate_block = LLVMAppendBasicBlockInContext(self.context, func, b"loop_predicate\0".as_ptr() as _);
+            let after_block = LLVMAppendBasicBlockInContext(self.context, func, b"after_loop\0".as_ptr() as _); 
+            
+            LLVMBuildBr(self.builder(), body_block);
+            
+            LLVMPositionBuilderAtEnd(self.builder(), body_block);
+            self.translate_statement(stmt.node.statement.as_ref());
+            LLVMBuildBr(self.builder(), predicate_block);
+            
+            LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
+            let t_v = Self::translate_expression(self, stmt.node.expression.as_ref());
+            let predicate = translate_type_cast(
+                self,
+                t_v.value, 
+                &t_v.lang_type, 
+                &Type::new_bool(), 
+                stmt.node.expression.as_ref()
+            );
+            LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
+            
+            LLVMPositionBuilderAtEnd(self.builder(), after_block);
+        }
     }
 
     fn generate_for(&mut self, stmt: &'a Node<ForStatement>) {
-        // unsafe {
-        //     let predicate_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let body_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+        unsafe {
+            let prev = LLVMGetInsertBlock(self.builder());
+            let func = LLVMGetBasicBlockParent(prev);
 
-        //     self.expr_trans().translate(stmt.node.initializer);                
-        //     llvm::core::LLVMBuildBr(self.builder(), predicate_block);  
-        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
-        //     let predicate = self.expr_trans().translate(stmt.node.condition.as_ref());
-        //     llvm::core::LLVMBuildCondBr(self.builder(), predicate, body_block, after_block);
-        //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), body_block);
-        //     self.translate_statement(stmt.node.statement.as_ref());    
-        //     self.expr_trans().translate(stmt.node.step.as_ref());
-        // }
-        todo!()
+            let initializer = LLVMAppendBasicBlockInContext(self.context, func, b"initializer_loop\0".as_ptr() as _);
+            let predicate_block = LLVMAppendBasicBlockInContext(self.context, func, b"loop_predicate\0".as_ptr() as _);
+            let step = LLVMAppendBasicBlockInContext(self.context, func, b"loop_step\0".as_ptr() as _);
+            let body_block = LLVMAppendBasicBlockInContext(self.context, func, b"loop_body\0".as_ptr() as _); 
+            let after_block = LLVMAppendBasicBlockInContext(self.context, func, b"after_loop\0".as_ptr() as _); 
+
+            LLVMBuildBr(self.builder(), initializer);
+
+            LLVMPositionBuilderAtEnd(self.builder(), initializer);
+            match &stmt.node.initializer.node {
+                ForInitializer::Empty => {}
+                ForInitializer::Expression(expr) => {
+                    let t_v = Self::translate_expression(self, &expr);
+                    let predicate = translate_type_cast(
+                    self,
+                    t_v.value, 
+                    &t_v.lang_type, 
+                    &Type::new_bool(), 
+                    stmt.node.condition.as_ref().unwrap()
+                    ); 
+                }
+                ForInitializer::Declaration(_) => { todo!() }
+                ForInitializer::StaticAssert(assert) => {
+                    self.check_static_assert(assert);
+                }
+            }
+            LLVMBuildBr(self.builder(), predicate_block);
+
+            LLVMPositionBuilderAtEnd(self.builder(), predicate_block);
+            if let Some(predicate) = &stmt.node.condition {
+                let t_v = Self::translate_expression(self, predicate); 
+                let predicate = translate_type_cast(
+                    self,
+                    t_v.value, 
+                    &t_v.lang_type, 
+                    &Type::new_bool(), 
+                    stmt.node.condition.as_ref().unwrap()
+                );  
+                LLVMBuildCondBr(self.builder(), predicate, step, after_block);
+            } else {
+                LLVMBuildBr(self.builder(), step);
+            }
+
+            LLVMPositionBuilderAtEnd(self.builder(), step);
+            if let Some(step) = &stmt.node.step {
+                Self::translate_expression(self, step); 
+            }
+            LLVMBuildBr(self.builder(), body_block);
+
+
+            LLVMPositionBuilderAtEnd(self.builder(), body_block);
+            self.translate_statement(&stmt.node.statement);
+            LLVMBuildBr(self.builder(), predicate_block);
+            
+            LLVMPositionBuilderAtEnd(self.builder(), after_block);
+        }
     }
 
     fn generate_switch(&mut self, stmt: &'a Node<SwitchStatement>) {
-        // unsafe {
-        //     let predicate = self.expr_trans().translate(stmt.node.expression.as_ref());
-        //     let after_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //     let switch = llvm::core::LLVMBuildSwitch(self.builder(), predicate, after_block, stmt.cases.len().try_into().expect("internal error"));
+        unsafe {
+            let prev = LLVMGetInsertBlock(self.builder());
+            let func = LLVMGetBasicBlockParent(prev);
+            
+            let predicate = LLVMAppendBasicBlockInContext(self.context, func, b"predicate\0".as_ptr() as _);
+            let after_block = LLVMAppendBasicBlockInContext(self.context, func, b"after_block\0".as_ptr() as _);
+            let switch = LLVMAppendBasicBlockInContext(self.context, func, b"switch\0".as_ptr() as _);
 
-        //     let mut prev: Option<llvm::prelude::LLVMBasicBlockRef> = None;
-        //     for case in stmt.cases {
-        //         let case_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
-        //         llvm::core::LLVMPositionBuilderAtEnd(self.builder(), case_block);
+            LLVMBuildBr(self.builder(), predicate);
 
-        //         match case {
-        //             ast::stmt::Case::Default(default) => {
-        //                 self.translate(default.body.as_ref());
-        //             }
-        //             ast::stmt::Case::Pattern(pattern) => {
-        //                 let pattern_val = Translator::translate_constant(pattern.constant.as_ref());
-        //                 self.translate(pattern.body.as_ref());
-        //                 llvm::core::LLVMAddCase(switch, pattern_val, case_block);
-        //             }
-        //         } 
+            LLVMPositionBuilderAtEnd(self.builder(), predicate);            
+            let t_v = Self::translate_expression(self, &stmt.node.expression);
+            let predicate = translate_type_cast(
+                self,
+                t_v.value, 
+                &t_v.lang_type, 
+                &Type::new_bool(), 
+                stmt.node.expression.as_ref()
+            );
 
-        //         if prev.is_some() {
-        //             llvm::core::LLVMPositionBuilderAtEnd(self.builder(), prev.unwrap());
-        //             llvm::core::LLVMBuildBr(self.builder(), case_block);
-        //         }
+            todo!()
+            // TODO: ближайщий
+            // match &stmt.node.statement.node {
+            //     Statement::Labeled(labled) => {
+            //         match &labled.node.label.node {
+            //             Label::Identifier(_) => {}
+            //             Label::Case(_) => {}
+            //             Label::Default => {}
+            //         }
+            //     }
+            // }
+
+            // let mut prev: Option<llvm::prelude::LLVMBasicBlockRef> = None;
+            // for case in stmt.statement.node {
+            //     let case_block = llvm::core::LLVMCreateBasicBlockInContext(self.context(), NOP_STUB);
+            //     llvm::core::LLVMPositionBuilderAtEnd(self.builder(), case_block);
+
+            //     match case {
+            //         ast::stmt::Case::Default(default) => {
+            //             self.translate(default.body.as_ref());
+            //         }
+            //         ast::stmt::Case::Pattern(pattern) => {
+            //             let pattern_val = Translator::translate_constant(pattern.constant.as_ref());
+            //             self.translate(pattern.body.as_ref());
+            //             llvm::core::LLVMAddCase(switch, pattern_val, case_block);
+            //         }
+            //     } 
+
+            //     if prev.is_some() {
+            //         llvm::core::LLVMPositionBuilderAtEnd(self.builder(), prev.unwrap());
+            //         llvm::core::LLVMBuildBr(self.builder(), case_block);
+            //     }
                 
                 
-        //         prev = Some(case_block);
-        //     }
-        //     if prev.is_some() {
-        //         llvm::core::LLVMBuildBr(self.builder(), after_block);
-        //     }
-        // }
-        todo!()
+            //     prev = Some(case_block);
+            // }
+            // if prev.is_some() {
+            //     llvm::core::LLVMBuildBr(self.builder(), after_block);
+            // }
+        }
     }
 
-    fn translate_return(&mut self, expr: &Option<Box<Node<Expression>>>, ret_type: r#type::Type) {
+    fn translate_return(&mut self, expr: &'a Option<Box<Node<Expression>>>, ret_type: r#type::Type) {
         let mut val: llvm::prelude::LLVMValueRef;
         if expr.is_some() {
             use codespan_reporting::diagnostic::{self, Label};
@@ -135,7 +251,7 @@ impl<'a> Translator<'a> {
                 ]));
                 val = std::ptr::null_mut();
             } else {
-                let v = self.translate_expression(expr.as_ref().unwrap());
+                let v = Self::translate_expression(self, expr.as_ref().unwrap());
                 let val2 = translate_type_cast(self, v.value, &v.lang_type, &ret_type, expr.as_ref().unwrap());
                 val = v.value;
             }
@@ -158,6 +274,45 @@ impl<'a> Translator<'a> {
         }
     }
 
+    fn translate_statement(&mut self, stmt: &'a Node<Statement>) {
+        match &stmt.node {
+            // Statement::Labeled(_) => {}
+            Statement::If(stmt) => {
+                self.translate_brunch(stmt);
+            }
+            Statement::Switch(stmt) => {
+                self.generate_switch(stmt);
+            }
+            Statement::While(stmt) => {
+                self.generate_while(stmt);
+            }
+            Statement::DoWhile(stmt) => {
+                self.generate_dowhile(stmt);
+            }
+            Statement::Goto(stmt) => {
+                todo!()
+            }
+            Statement::Continue => {
+                //TODO: for, while or do-while
+                todo!() 
+            }
+            Statement::Break => {
+                //TODO: for, while or do-while switch 
+                todo!() 
+            }
+            Statement::Asm(_) => {}
+            Statement::Labeled(_) => {}
+            Statement::Compound(_) => {}
+            Statement::Expression(ref expr) => {
+                if expr.is_some() {
+                    Self::translate_expression(self, expr.as_ref().unwrap());
+                }
+            }
+            Statement::For(_) => {}
+            Statement::Return(_) => {}
+        }
+    }
+
     pub fn translate_compound_statement(&mut self, stmt: &'a Vec<Node<BlockItem>>, ret_type: r#type::Type) {
         let mut iter = stmt.into_iter();
         while let Some(item) = iter.next() {
@@ -165,8 +320,8 @@ impl<'a> Translator<'a> {
                 BlockItem::Declaration(decl) => {
                     self.translate_declaration(decl);
                 }
-                BlockItem::StaticAssert(_) => {
-                    todo!()
+                BlockItem::StaticAssert(node) => {
+                    self.check_static_assert(node);
                 }
                 BlockItem::Statement(node) => {
                     match &node.node {
@@ -185,45 +340,28 @@ impl<'a> Translator<'a> {
                             return;
                         },
                         Statement::Expression(Some(ref expr)) => {
-                            self.translate_expression(expr);
+                            Self::translate_expression(self, expr);
                         },
-                        _ => todo!()
+                        Statement::For(stmt) => {
+                            self.generate_for(stmt);
+                        },
+                        _ => self.translate_statement(node),
                     }
                 }
             }
         }    
         self.translate_return(&None, ret_type); 
-        // match &stmt.node {
-            
-        //     // Statement::Labeled(_) => {}
-        //     // Statement::If(stmt) => {
-        //     //     self.translate_brunch(stmt);
-        //     // }
-        //     // Statement::Switch(stmt) => {
-        //     //     self.generate_switch(stmt);
-        //     // }
-        //     // Statement::While(stmt) => {
-        //     //     self.generate_while(stmt)
-        //     // }
-        //     // Statement::DoWhile(stmt) => {
-        //     //     self.generate_dowhile(stmt);
-        //     // }
-        //     // Statement::For(stmt) => {
-        //     //     self.generate_for(stmt);
-        //     // }
-        //     // Statement::Goto(_) => {
-        //     //     //TODO: for, while or do-while
-        //     //     todo!() 
-        //     // }
-        //     // Statement::Continue => {
-        //     //     //TODO: for, while or do-while
-        //     //     todo!() 
-        //     // }
-        //     // Statement::Break => {
-        //     //     //TODO: for, while or do-while switch 
-        //     //     todo!() 
-        //     // }
-        //     // Statement::Asm(_) => {}
-        //     _ => todo!()
     }
 }
+
+// struct Walker<'ast> {
+//     path: Vec<(&'ast usize, usize)>
+// }
+
+// impl<'ast> Walker<'ast> {
+//     type Item = usize;
+
+//     pub fn path() -> impl Iterator<Item = Self::Item> {
+
+//     }
+// }

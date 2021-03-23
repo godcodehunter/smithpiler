@@ -13,6 +13,7 @@ use crate::utils::*;
 use std::convert::TryInto;
 use std::collections::HashMap;
 
+use crate::cp_expr_ex::*;
 use codespan_reporting::files::SimpleFile;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use codespan_reporting::term;
@@ -33,10 +34,9 @@ pub trait BaseTranslator<'ast> {
         todo!()
     }
     /// Returns the translated value at the current translation position if variable not exist return None
-    fn resolve_variable(&self, identifier: &Identifier) -> TranslatedValue;
+    fn resolve_symbol(&self, identifier: &Identifier) -> TranslatedValue;
     /// Update variable and return true otherwise if variable not exist return false
-    fn update_variable(&mut self, identifier: &'ast Identifier, value: TranslatedValue);
-    fn create_variable(&mut self, identifier: &'ast Identifier, ty: &r#type::Type);
+    fn update_symbol(&mut self, identifier: &'ast Identifier, value: TranslatedValue);
     fn resolve_typename(&self, identifier: &Identifier) -> Type;
 }
 
@@ -44,13 +44,14 @@ pub trait BaseTranslator<'ast> {
 pub const NOP_STUB: *const libc::c_char = b"nop\0".as_ptr() as _;
 
 pub struct Translator<'ast> {
-    context: llvm::prelude::LLVMContextRef,
+    pub context: llvm::prelude::LLVMContextRef,
     module: llvm::prelude::LLVMModuleRef,
     builder: llvm::prelude::LLVMBuilderRef,
     file: MaybeUninit<SimpleFile<String, &'ast String>>,
     pub diagnostics: std::collections::LinkedList<Diagnostic>,
     variables: HashMap<&'ast Identifier, TranslatedValue>,
     types: HashMap<&'ast Identifier, Type>,
+    cte: CTEnv,
 }
 
 impl<'ast> BaseTranslator<'ast> for Translator<'ast>  {
@@ -58,7 +59,7 @@ impl<'ast> BaseTranslator<'ast> for Translator<'ast>  {
         self.builder
     }
 
-    fn resolve_variable(&self, identifier: &Identifier) -> TranslatedValue {
+    fn resolve_symbol(&self, identifier: &Identifier) -> TranslatedValue {
         self.variables.get(identifier).unwrap().clone()
     }
 
@@ -66,12 +67,8 @@ impl<'ast> BaseTranslator<'ast> for Translator<'ast>  {
         self.types.get(identifier).unwrap().clone()
     }
 
-    fn update_variable(&mut self, identifier: &'ast Identifier, value: TranslatedValue) {
+    fn update_symbol(&mut self, identifier: &'ast Identifier, value: TranslatedValue) {
         self.variables.insert(identifier, value);
-    }
-
-    fn create_variable(&mut self, identifier: &'ast Identifier, ty: &Type) {
-        todo!()
     }
 }
 
@@ -85,6 +82,7 @@ impl<'ast> Translator<'ast> {
             diagnostics: Default::default(),
             variables: Default::default(),
             types: Default::default(),
+            cte: CTEnv::new().unwrap(),
         }
     }
     
@@ -141,7 +139,7 @@ impl<'ast> Translator<'ast> {
                                 CString::new(ident.node.name.clone().into_bytes()).unwrap().as_ptr(), 
                                 t_t
                             );
-                            self.update_variable(&ident.node, TranslatedValue{
+                            self.update_symbol(&ident.node, TranslatedValue{
                                 value: function,
                                 lang_type: f_t,
                             });
@@ -155,8 +153,8 @@ impl<'ast> Translator<'ast> {
             if let Some(initializer) = &declarator.node.initializer {
                 match &initializer.node {
                     Initializer::Expression(expr) => {
-                        let value = self.translate_expression(&*expr);
-                        self.update_variable(&ident.node, value)
+                        let value = Self::translate_expression(self, &*expr);
+                        self.update_symbol(&ident.node, value)
                     }
                     Initializer::List(list) => {
                         panic!()
@@ -314,15 +312,16 @@ impl<'ast> Translator<'ast> {
                 f_t.translate(self)
             );
         
-            let block = LLVMAppendBasicBlock(
+            let block = LLVMAppendBasicBlockInContext(
+                self.context,
                 function, 
                 b"body\0".as_ptr() as _,
             );
 
-            self.update_variable(identifier, TranslatedValue{value: function, lang_type: f_t.clone()});
+            self.update_symbol(identifier, TranslatedValue{value: function, lang_type: f_t.clone()});
             for i in params.into_iter().enumerate() {
                 let p = LLVMGetParam(function, i.0 as _);
-                self.update_variable(i.1.0, TranslatedValue{value: p, lang_type: f_t.clone()});
+                self.update_symbol(i.1.0, TranslatedValue{value: p, lang_type: f_t.clone()});
             }
 
             LLVMPositionBuilderAtEnd(self.builder(), block);
@@ -335,37 +334,14 @@ impl<'ast> Translator<'ast> {
         }
     }
 
-    /// C 6.7.10.3 Expression should be integer constant expression
-    fn execute_constant_expression(&mut self, assert: &Node<Expression>) -> u64 {
+    pub fn check_static_assert(&mut self, node: &Node<StaticAssert>) {
         unsafe {
-            use llvm_sys::execution_engine::*;
-            let module = LLVMModuleCreateWithName(NOP_STUB);
-            let engine: *mut LLVMExecutionEngineRef = std::ptr::null_mut();
-            let error: *mut *mut i8 = std::ptr::null_mut();
-            //TODO: check error 
-            LLVMCreateExecutionEngineForModule(engine, module, error);
-            let func_type = LLVMFunctionType(
-                LLVMInt8Type(),
-                [].as_mut_ptr(),
-                0,
-                false as _,
-            );
-            let function = LLVMAddFunction(
-                self.module, 
-                b"constant_expression\0".as_ptr() as _, 
-                func_type
-            );
-        
-            let block = LLVMAppendBasicBlockInContext(
-                self.context, 
-                function, 
-                NOP_STUB,
-            );
-            let builder = LLVMCreateBuilderInContext(self.context);
-            LLVMPositionBuilderAtEnd(builder, block);
-            //TODO: ... 
-            let value = LLVMRunFunction(*engine, function, 0, [].as_mut_ptr());
-            LLVMGenericValueToInt(value, true as _)
+            let unchecked= self as *mut Translator;
+            let v = (*unchecked).cte.execute(unchecked.as_mut().unwrap(), &*node.node.expression);
+            if v == 0 {
+                let diagnostic = static_assert(node);
+                self.diagnostics.push_back(diagnostic);
+            }
         }
     }
 
@@ -373,9 +349,9 @@ impl<'ast> Translator<'ast> {
     pub fn translate(&mut self, parse_result: &'ast driver::Parse, path: String) -> llvm::prelude::LLVMModuleRef {
         unsafe {
             self.file.as_mut_ptr().write(SimpleFile::new(path.clone(), &parse_result.source));
-            // self.context = LLVMContextCreate();
-            self.module = LLVMModuleCreateWithName(path.as_bytes().as_ptr() as _);
-            self.builder = LLVMCreateBuilder();
+            self.context = LLVMContextCreate();
+            self.module = LLVMModuleCreateWithNameInContext(path.as_bytes().as_ptr() as _, self.context);
+            self.builder = LLVMCreateBuilderInContext(self.context);
         }
 
         for decl in &parse_result.unit.0 {
@@ -387,9 +363,7 @@ impl<'ast> Translator<'ast> {
                     self.translate_declaration(decl);
                 }
                 ExternalDeclaration::StaticAssert(assert) => { 
-                    self.execute_constant_expression(&assert.node.expression);
-                    let diagnostic = static_assert(assert);
-                    self.diagnostics.push_back(diagnostic);
+                    self.check_static_assert(assert)
                 }
             }
         }

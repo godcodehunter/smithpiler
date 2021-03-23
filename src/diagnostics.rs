@@ -39,10 +39,11 @@ pub fn unreachable_after_return(stmt: &Node<Statement>, range: std::ops::Range<u
 
 pub fn static_assert(assert: &Node<StaticAssert>) -> Diagnostic {
     let span = assert.span;
+    let e_span = assert.node.expression.span;
     Diagnostic::error()
         .with_message("static assert failure")
         .with_labels(vec![
-            Label::primary((), span.start..span.end)
+            Label::primary((), span.start..span.end),
         ])
 }
 

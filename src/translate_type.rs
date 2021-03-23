@@ -2,7 +2,7 @@ use crate::r#type::*;
 use crate::translator::{BaseTranslator, NOP_STUB};
 
 impl Type {
-    pub fn translate<'a, T: BaseTranslator<'a>>(&self, translator: &'a T) -> llvm::prelude::LLVMTypeRef {
+    pub fn translate<'a, T: BaseTranslator<'a>>(&self, translator: &T) -> llvm::prelude::LLVMTypeRef {
         use Fundamental::*;
         
         let translate_fundamental = |ty: &Fundamental| -> llvm::prelude::LLVMTypeRef {

@@ -2,6 +2,7 @@
 #![feature(concat_idents)]
 #![feature(trait_alias)]
 #![feature(type_alias_impl_trait)]
+#![feature(inherent_associated_types)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 mod translator;
@@ -13,6 +14,7 @@ mod diagnostics;
 mod translate_type;
 mod type_cast;
 mod statement;
+mod cp_expr_ex;
 
 extern crate llvm_sys as llvm;
 extern crate clap;

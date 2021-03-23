@@ -114,7 +114,7 @@ impl Type {
     }
 
     pub fn is_signed(&self) -> bool {
-        todo!()
+        true
     }
 }
 

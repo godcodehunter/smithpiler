@@ -11,7 +11,7 @@ use lang_c::{span::Node, ast::Expression};
 /// * `associate` - values type
 /// * `target` - target type to which the conversion will be performed
 pub fn translate_type_cast<'a, T: BaseTranslator<'a>>(
-    translator: &'a T, 
+    translator: &T, 
     value: llvm::prelude::LLVMValueRef, 
     associate: &r#type::Type, 
     target: &r#type::Type,
@@ -155,7 +155,7 @@ pub fn translate_type_cast<'a, T: BaseTranslator<'a>>(
 }
 
 pub fn implicit_type_cast<'a, T: BaseTranslator<'a>>(
-    translator: &'a T, 
+    translator: &T, 
     value1: llvm::prelude::LLVMValueRef, 
     associate1: &r#type::Type, 
     value2: llvm::prelude::LLVMValueRef, 
