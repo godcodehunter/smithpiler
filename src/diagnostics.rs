@@ -31,7 +31,7 @@ pub fn unreachable_after_return(stmt: &Node<Statement>, range: std::ops::Range<u
         .with_message("unreachable code")
         .with_labels(vec![
             Label::primary((), stmt.span.start..stmt.span.end)
-                .with_message("first return of control"),
+                .with_message("control transfer"),
             Label::primary((), range)
                 .with_message("unreachable")
         ])

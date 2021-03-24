@@ -70,18 +70,18 @@ impl CTEnv {
         }
     }
 
-    pub fn execute<'a>(&'a mut self, translator: &'a Translator<'a> , expr: &'a Node<Expression>) -> u64 {
+    pub fn execute<'a>(&'a mut self, translator: &'a mut Translator<'a> , expr: &'a Node<Expression>) -> u64 {
         unsafe {
             struct ProxyTranslator<'a>{
                 cte: &'a mut CTEnv,
-                rt: &'a Translator<'a> ,
+                rt: &'a mut Translator<'a> ,
             }
 
             impl<'ast> BaseTranslator<'ast> for ProxyTranslator<'ast> {
                 fn builder(&self) -> LLVMBuilderRef {
                     self.cte.builder
                 }
-                fn add_diagnostic(&self, diagnostic: Diagnostic) {
+                fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
                     self.rt.add_diagnostic(diagnostic)
                 }
                 fn resolve_symbol(&self, identifier: &Identifier) -> TranslatedValue {
@@ -92,6 +92,10 @@ impl CTEnv {
                 }
                 fn resolve_typename(&self, identifier: &Identifier) -> Type {
                     self.rt.resolve_typename(identifier)
+                }
+
+                fn context(&self) -> LLVMContextRef {
+                    self.rt.context
                 }
             }
 
@@ -112,13 +116,13 @@ impl CTEnv {
                 )
             );
             let value = LLVMRunFunction(
-                self.engine, 
-                self.function, 
+                proxy.cte.engine, 
+                proxy.cte.function, 
                 0, 
                 [].as_mut_ptr()
             );
             let ret = LLVMGenericValueToInt(value, true as _);
-            self.erase();
+            proxy.cte.erase();
             ret
         }
     }

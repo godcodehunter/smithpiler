@@ -1,5 +1,5 @@
 extern crate llvm_sys;
-use llvm_sys::core::*;
+use llvm_sys::{core::*, prelude::LLVMContextRef};
 extern crate libc;
 use crate::{expression::*, r#type, type_cast::*};
 use crate::statement::*;
@@ -30,9 +30,8 @@ pub struct TranslatedValue {
 /// Base trait for all translators.
 pub trait BaseTranslator<'ast> {
     fn builder(&self) -> llvm::prelude::LLVMBuilderRef;
-    fn add_diagnostic(&self, diagnostic: Diagnostic) {
-        todo!()
-    }
+    fn context(&self) -> LLVMContextRef;
+    fn add_diagnostic(&mut self, diagnostic: Diagnostic);
     /// Returns the translated value at the current translation position if variable not exist return None
     fn resolve_symbol(&self, identifier: &Identifier) -> TranslatedValue;
     /// Update variable and return true otherwise if variable not exist return false
@@ -41,11 +40,11 @@ pub trait BaseTranslator<'ast> {
 }
 
 //TODO: temporary placeholder 
-pub const NOP_STUB: *const libc::c_char = b"nop\0".as_ptr() as _;
+pub const NOP_STUB: *const libc::c_char = b"\0".as_ptr() as _;
 
 pub struct Translator<'ast> {
     pub context: llvm::prelude::LLVMContextRef,
-    module: llvm::prelude::LLVMModuleRef,
+    pub module: llvm::prelude::LLVMModuleRef,
     builder: llvm::prelude::LLVMBuilderRef,
     file: MaybeUninit<SimpleFile<String, &'ast String>>,
     pub diagnostics: std::collections::LinkedList<Diagnostic>,
@@ -59,6 +58,10 @@ impl<'ast> BaseTranslator<'ast> for Translator<'ast>  {
         self.builder
     }
 
+    fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push_back(diagnostic)
+    }
+
     fn resolve_symbol(&self, identifier: &Identifier) -> TranslatedValue {
         self.variables.get(identifier).unwrap().clone()
     }
@@ -69,6 +72,10 @@ impl<'ast> BaseTranslator<'ast> for Translator<'ast>  {
 
     fn update_symbol(&mut self, identifier: &'ast Identifier, value: TranslatedValue) {
         self.variables.insert(identifier, value);
+    }
+
+    fn context(&self) -> LLVMContextRef {
+        self.context
     }
 }
 
@@ -216,7 +223,7 @@ impl<'ast> Translator<'ast> {
         let mut params = Vec::<(&lang_c::ast::Identifier, Type)>::new();
         
         &function_definition.node.specifiers;
-        let ret_type = Type::new_void();
+        let ret_type = Type::new_signed_int();
 
         if let DeclaratorKind::Identifier(ident) = &function_definition.node.declarator.node.kind.node {
             unsafe {
@@ -315,13 +322,13 @@ impl<'ast> Translator<'ast> {
             let block = LLVMAppendBasicBlockInContext(
                 self.context,
                 function, 
-                b"body\0".as_ptr() as _,
+                b"func.body\0".as_ptr() as _,
             );
 
             self.update_symbol(identifier, TranslatedValue{value: function, lang_type: f_t.clone()});
             for i in params.into_iter().enumerate() {
                 let p = LLVMGetParam(function, i.0 as _);
-                self.update_symbol(i.1.0, TranslatedValue{value: p, lang_type: f_t.clone()});
+                self.update_symbol(i.1.0, TranslatedValue{value: p, lang_type: i.1.1});
             }
 
             LLVMPositionBuilderAtEnd(self.builder(), block);
@@ -334,7 +341,7 @@ impl<'ast> Translator<'ast> {
         }
     }
 
-    pub fn check_static_assert(&mut self, node: &Node<StaticAssert>) {
+    pub fn check_static_assert(&mut self, node: &'ast Node<StaticAssert>) {
         unsafe {
             let unchecked= self as *mut Translator;
             let v = (*unchecked).cte.execute(unchecked.as_mut().unwrap(), &*node.node.expression);
@@ -367,6 +374,7 @@ impl<'ast> Translator<'ast> {
                 }
             }
         }
+        unsafe { LLVMDumpModule(self.module); }
         self.module
     }
 
